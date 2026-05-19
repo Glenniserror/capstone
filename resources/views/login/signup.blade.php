@@ -76,6 +76,14 @@
             position: relative;
             overflow: hidden;
             flex-shrink: 0;
+            transition: transform 0.3s ease, border-color 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        .logo-circle:hover {
+            transform: scale(1.1);
+            border-color: rgba(255,255,255,0.9);
+            box-shadow: 0 0 0 4px rgba(255,255,255,0.2);
         }
 
         .logo-circle img {
@@ -395,8 +403,8 @@
             }
 
             .logo-circle {
-                width: 72px;
-                height: 72px;
+                width: 100px;
+                height: 100px;
             }
 
             .school-name { font-size: 9px; }

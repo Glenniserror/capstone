@@ -76,11 +76,13 @@
             background: rgba(255, 255, 255, 0.15);
             position: relative;
             overflow: hidden;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            transition: transform 0.3s ease, border-color 0.2s, box-shadow 0.2s;
             flex-shrink: 0;
+            cursor: pointer;
         }
 
         .logo-circle:hover {
+            transform: scale(1.1);
             border-color: rgba(255,255,255,0.9);
             box-shadow: 0 0 0 4px rgba(255,255,255,0.2);
         }

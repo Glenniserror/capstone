@@ -80,7 +80,9 @@ body {
     display: flex;
     gap: 16px;
     justify-content: center;
+    align-items: center;
     flex-wrap: wrap;
+    margin: 0 auto;
 }
 
 .btn {
@@ -91,6 +93,7 @@ body {
     color: #fff;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
     cursor: pointer;
     text-decoration: none;
@@ -98,6 +101,7 @@ body {
     transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.3s ease;
     position: relative;
     overflow: hidden;
+    min-width: 160px;
 }
 
 .btn:hover {
@@ -621,8 +625,11 @@ body {
     }
 
     .btn {
+        width: 100%;
+        max-width: 280px;
         padding: 13px 20px;
         font-size: 0.9rem;
+        justify-content: center;
     }
 
     .features {

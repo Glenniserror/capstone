@@ -220,7 +220,7 @@ class AuthController extends Controller
         // Check if user exists
         $user = User::where('email', $googleUser->getEmail())->first();
 
-        if ($user) {
+        if ($user !== null) {
             // User exists, check if role matches
             if ($user->role !== $role) {
                 return redirect()->route($role.'.login')
@@ -262,12 +262,10 @@ class AuthController extends Controller
         $role = session('oauth_role') ?? 'student';
         $email = $testEmails[$role] ?? 'test.user@gmail.com';
 
-        session()->forget('oauth_role');
-
         // Check if user exists
         $user = User::where('email', $email)->first();
 
-        if ($user) {
+        if ($user !== null) {
             // User exists, check if role matches
             if ($user->role !== $role) {
                 return redirect()->route($role.'.login')
@@ -286,6 +284,9 @@ class AuthController extends Controller
         // Log the user in
         if ($user instanceof User) {
             Auth::login($user);
+
+            // Clear session only after successful authentication
+            session()->forget('oauth_role');
 
             // Show success message
             session(['google_auth_success' => true, 'google_auth_email' => $email]);

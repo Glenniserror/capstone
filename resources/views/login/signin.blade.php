@@ -238,6 +238,12 @@
       <h2>Welcome back</h2>
       <p class="sub" id="sub-text">Sign in to your student account</p>
 
+      @if (session('success'))
+        <div style="background: #d4edda; color: #155724; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; border: 1px solid #c3e6cb;">
+          {{ session('success') }}
+        </div>
+      @endif
+
       <div class="role-tabs">
         <button class="role-tab active" onclick="setRole('student', this)">
           <i class="fa-solid fa-user-graduate"></i><span>Student</span>
@@ -250,7 +256,7 @@
         </button>
       </div>
 
-      <button class="google-btn">
+      <button class="google-btn" type="button" onclick="redirectToGoogle()">
         <svg width="17" height="17" viewBox="0 0 48 48">
           <path fill="#FFC107" d="M43.6 20H24v8h11.1C33.5 33.2 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C33.9 6.5 29.2 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.4-4z"/>
           <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C33.9 6.5 29.2 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
@@ -262,31 +268,36 @@
 
       <div class="divider">or sign in with email</div>
 
-      <div class="ig">
-        <label>Email address</label>
-        <div class="iw">
-          <i class="fa-solid fa-envelope ico"></i>
-          <input type="email" id="email" placeholder="Enter your email" autocomplete="email">
+      <form id="loginForm" method="POST">
+        @csrf
+        <div class="ig">
+          <label>Email address</label>
+          <div class="iw">
+            <i class="fa-solid fa-envelope ico"></i>
+            <input type="email" name="email" id="email" placeholder="Enter your email" autocomplete="email" required value="{{ old('email') }}">
+          </div>
+          @error('email')<p style="color: red; font-size: 12px; margin-top: 5px;">{{ $message }}</p>@enderror
         </div>
-      </div>
 
-      <div class="ig">
-        <label>Password</label>
-        <div class="iw">
-          <i class="fa-solid fa-lock ico"></i>
-          <input type="password" id="pw" placeholder="••••••••" autocomplete="current-password">
-          <i class="fa-solid fa-eye eye" onclick="togglePw()"></i>
+        <div class="ig">
+          <label>Password</label>
+          <div class="iw">
+            <i class="fa-solid fa-lock ico"></i>
+            <input type="password" name="password" id="pw" placeholder="••••••••" autocomplete="current-password" required>
+            <i class="fa-solid fa-eye eye" onclick="togglePw()"></i>
+          </div>
+          @error('password')<p style="color: red; font-size: 12px; margin-top: 5px;">{{ $message }}</p>@enderror
         </div>
-      </div>
 
-      <div class="row-meta">
-        <label><input type="checkbox"> Remember me for 30 days</label>
-        <a href="#" class="forgot">Forgot password?</a>
-      </div>
+        <div class="row-meta">
+          <label><input type="checkbox" name="remember"> Remember me for 30 days</label>
+          <a href="#" class="forgot">Forgot password?</a>
+        </div>
 
-      <button class="btn-main" onclick="handleSignIn()">
-        <i class="fa-solid fa-right-to-bracket"></i> Sign In
-      </button>
+        <button type="submit" class="btn-main">
+          <i class="fa-solid fa-right-to-bracket"></i> Sign In
+        </button>
+      </form>
 
       <p class="bottom-link">Don't have an account? <a href="{{ route('signin-signup') }}">Sign up free</a></p>
     </div>
@@ -295,25 +306,34 @@
 
 <script>
 const roleLabels = { student: 'Sign in to your student account', teacher: 'Sign in to your teacher account', admin: 'Sign in to your admin account' };
+const roleRoutes = { student: '{{ route("student.login.submit") }}', teacher: '{{ route("teacher.login.submit") }}', admin: '{{ route("admin.login.submit") }}' };
+const googleRoutes = { student: '{{ route("auth.google.redirect", "student") }}', teacher: '{{ route("auth.google.redirect", "teacher") }}', admin: '{{ route("auth.google.redirect", "admin") }}' };
 let currentRole = 'student';
+
 function setRole(role, el) {
   currentRole = role;
   document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('sub-text').textContent = roleLabels[role];
+  document.getElementById('loginForm').action = roleRoutes[role];
 }
+
 function togglePw() {
   const p = document.getElementById('pw');
   const icon = document.querySelector('.eye');
   p.type = p.type === 'password' ? 'text' : 'password';
   icon.className = p.type === 'password' ? 'fa-solid fa-eye eye' : 'fa-solid fa-eye-slash eye';
 }
-function handleSignIn() {
-  const email = document.getElementById('email').value;
-  const pw = document.getElementById('pw').value;
-  if (!email || !pw) { alert('Please enter email and password.'); return; }
-  console.log('Signing in as:', currentRole, 'email:', email);
+
+function redirectToGoogle() {
+  window.location.href = googleRoutes[currentRole];
 }
+
+// Set initial form action
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('loginForm');
+  form.action = roleRoutes['student'];
+});
 </script>
 </body>
 </html>

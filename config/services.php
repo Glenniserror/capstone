@@ -42,10 +42,17 @@ return [
     'openrouter' => [
         'key' => env('OPENROUTER_API_KEY'),
     ],
-    
+
     'supabase' => [
-    'url'      => env('SUPABASE_URL'),
-    'anon_key' => env('SUPABASE_ANON_KEY'),
-],
+        'url' => env('SUPABASE_URL'),
+        'anon_key' => env('SUPABASE_ANON_KEY'),
+    ],
+
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+        'mode' => env('GOOGLE_OAUTH_MODE', 'live'),
+    ],
 
 ];

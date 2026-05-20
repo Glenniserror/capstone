@@ -242,6 +242,14 @@
       <h2>Create account</h2>
       <p class="sub" id="sub-text">Sign up as a student for free</p>
 
+      @if ($errors->any())
+        <div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; border: 1px solid #f5c6cb;">
+          @foreach ($errors->all() as $error)
+            <p>{{ $error }}</p>
+          @endforeach
+        </div>
+      @endif
+
       <div class="role-tabs">
         <button class="role-tab active" onclick="setRole('student', this)">
           <i class="fa-solid fa-user-graduate"></i><span>Student</span>
@@ -254,7 +262,7 @@
         </button>
       </div>
 
-      <button class="google-btn">
+      <button class="google-btn" type="button" onclick="redirectToGoogle()">
         <svg width="17" height="17" viewBox="0 0 48 48">
           <path fill="#FFC107" d="M43.6 20H24v8h11.1C33.5 33.2 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C33.9 6.5 29.2 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.4-4z"/>
           <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C33.9 6.5 29.2 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
@@ -266,66 +274,73 @@
 
       <div class="divider">or sign up with email</div>
 
-      <div class="two-col">
-        <div class="ig">
-          <label>First name</label>
-          <div class="iw">
-            <i class="fa-regular fa-user ico"></i>
-            <input type="text" id="fname" placeholder="Juan" autocomplete="given-name">
+      <form id="signupForm" method="POST">
+        @csrf
+        <div class="two-col">
+          <div class="ig">
+            <label>First name</label>
+            <div class="iw">
+              <i class="fa-regular fa-user ico"></i>
+              <input type="text" name="firstName" id="fname" placeholder="Juan" autocomplete="given-name" required value="{{ old('firstName') }}">
+            </div>
+            @error('firstName')<p style="color: red; font-size: 12px; margin-top: 5px;">{{ $message }}</p>@enderror
+          </div>
+          <div class="ig">
+            <label>Last name</label>
+            <div class="iw">
+              <i class="fa-regular fa-user ico"></i>
+              <input type="text" name="lastName" id="lname" placeholder="dela Cruz" autocomplete="family-name" required value="{{ old('lastName') }}">
+            </div>
+            @error('lastName')<p style="color: red; font-size: 12px; margin-top: 5px;">{{ $message }}</p>@enderror
           </div>
         </div>
+
         <div class="ig">
-          <label>Last name</label>
+          <label>Email address</label>
           <div class="iw">
-            <i class="fa-regular fa-user ico"></i>
-            <input type="text" id="lname" placeholder="dela Cruz" autocomplete="family-name">
+            <i class="fa-solid fa-envelope ico"></i>
+            <input type="email" name="email" id="email" placeholder="Enter your email" autocomplete="email" required value="{{ old('email') }}">
+          </div>
+          @error('email')<p style="color: red; font-size: 12px; margin-top: 5px;">{{ $message }}</p>@enderror
+        </div>
+
+        <div class="ig" id="section-row">
+          <label>Section</label>
+          <div class="iw">
+            <i class="fa-solid fa-school ico"></i>
+            <input type="text" name="section" id="section" placeholder="e.g. Einstein" value="{{ old('section') }}">
           </div>
         </div>
-      </div>
 
-      <div class="ig">
-        <label>Email address</label>
-        <div class="iw">
-          <i class="fa-solid fa-envelope ico"></i>
-          <input type="email" id="email" placeholder="Enter your email" autocomplete="email">
+        <div class="ig">
+          <label>Password</label>
+          <div class="iw">
+            <i class="fa-solid fa-lock ico"></i>
+            <input type="password" name="password" id="pw" placeholder="Create a strong password" oninput="checkStrength()" required>
+            <i class="fa-solid fa-eye eye" onclick="togglePw('pw', this)"></i>
+          </div>
+          <div class="pw-strength">
+            <div class="pw-bar"><div class="pw-fill" id="pw-fill"></div></div>
+            <div class="pw-label" id="pw-label">At least 8 characters</div>
+          </div>
+          @error('password')<p style="color: red; font-size: 12px; margin-top: 5px;">{{ $message }}</p>@enderror
         </div>
-      </div>
 
-      <div class="ig" id="section-row">
-        <label>Section</label>
-        <div class="iw">
-          <i class="fa-solid fa-school ico"></i>
-          <input type="text" id="section" placeholder="e.g. Einstein">
+        <div class="ig">
+          <label>Confirm password</label>
+          <div class="iw">
+            <i class="fa-solid fa-lock ico"></i>
+            <input type="password" name="password_confirmation" id="pw2" placeholder="Repeat your password" required>
+            <i class="fa-solid fa-eye eye" onclick="togglePw('pw2', this)"></i>
+          </div>
         </div>
-      </div>
 
-      <div class="ig">
-        <label>Password</label>
-        <div class="iw">
-          <i class="fa-solid fa-lock ico"></i>
-          <input type="password" id="pw" placeholder="Create a strong password" oninput="checkStrength()">
-          <i class="fa-solid fa-eye eye" onclick="togglePw('pw', this)"></i>
-        </div>
-        <div class="pw-strength">
-          <div class="pw-bar"><div class="pw-fill" id="pw-fill"></div></div>
-          <div class="pw-label" id="pw-label">At least 8 characters</div>
-        </div>
-      </div>
+        <p class="terms">By creating an account you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></p>
 
-      <div class="ig">
-        <label>Confirm password</label>
-        <div class="iw">
-          <i class="fa-solid fa-lock ico"></i>
-          <input type="password" id="pw2" placeholder="Repeat your password">
-          <i class="fa-solid fa-eye eye" onclick="togglePw('pw2', this)"></i>
-        </div>
-      </div>
-
-      <p class="terms">By creating an account you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></p>
-
-      <button class="btn-main" onclick="handleSignUp()">
-        <i class="fa-solid fa-user-plus"></i> Create Account
-      </button>
+        <button type="submit" class="btn-main">
+          <i class="fa-solid fa-user-plus"></i> Create Account
+        </button>
+      </form>
 
       <p class="bottom-link">Already have an account? <a href="{{ route('signin-signin') }}">Sign in</a></p>
     </div>
@@ -334,19 +349,29 @@
 
 <script>
 const roleLabels = { student: 'Sign up as a student for free', teacher: 'Sign up as a teacher', admin: 'Sign up as an administrator' };
+const roleRoutes = { student: '{{ route("student.register") }}', teacher: '{{ route("teacher.register") }}', admin: '{{ route("admin.register") }}' };
+const googleRoutes = { student: '{{ route("auth.google.redirect", "student") }}', teacher: '{{ route("auth.google.redirect", "teacher") }}', admin: '{{ route("auth.google.redirect", "admin") }}' };
 let currentRole = 'student';
+
 function setRole(role, el) {
   currentRole = role;
   document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('sub-text').textContent = roleLabels[role];
+  document.getElementById('signupForm').action = roleRoutes[role];
   document.getElementById('section-row').style.display = role === 'student' ? 'block' : 'none';
 }
+
+function redirectToGoogle() {
+  window.location.href = googleRoutes[currentRole];
+}
+
 function togglePw(id, icon) {
   const p = document.getElementById(id);
   p.type = p.type === 'password' ? 'text' : 'password';
   icon.className = p.type === 'password' ? 'fa-solid fa-eye eye' : 'fa-solid fa-eye-slash eye';
 }
+
 function checkStrength() {
   const pw = document.getElementById('pw').value;
   const fill = document.getElementById('pw-fill');
@@ -368,18 +393,13 @@ function checkStrength() {
   label.textContent = map[score].txt;
   label.style.color = map[score].bg;
 }
-function handleSignUp() {
-  const fname = document.getElementById('fname').value.trim();
-  const lname = document.getElementById('lname').value.trim();
-  const email = document.getElementById('email').value.trim();
-  const pw = document.getElementById('pw').value;
-  const pw2 = document.getElementById('pw2').value;
-  if (!fname || !lname || !email || !pw || !pw2) { alert('Please fill in all fields.'); return; }
-  if (!email.includes('@')) { alert('Enter a valid email address.'); return; }
-  if (pw.length < 8) { alert('Password must be at least 8 characters.'); return; }
-  if (pw !== pw2) { alert('Passwords do not match.'); return; }
-  console.log('Signing up as:', currentRole, '| name:', fname, lname, '| email:', email);
-}
+
+// Set initial form action on page load
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('signupForm');
+  form.action = roleRoutes['student'];
+  document.getElementById('section-row').style.display = 'block';
+});
 </script>
 </body>
 </html>

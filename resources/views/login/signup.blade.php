@@ -250,6 +250,12 @@
         </div>
       @endif
 
+      @if (session('notification_error'))
+        <div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; border: 1px solid #f5c6cb;">
+          {{ session('notification_error') }}
+        </div>
+      @endif
+
       <div class="role-tabs">
         <button class="role-tab active" onclick="setRole('student', this)">
           <i class="fa-solid fa-user-graduate"></i><span>Student</span>

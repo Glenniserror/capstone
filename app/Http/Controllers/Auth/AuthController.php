@@ -71,7 +71,7 @@ class AuthController extends Controller
         return view('login.signin', ['portalType' => 'teacher']);
     }
 
-    public function teacherLogin(Request $request)
+    public function teacherLogin(Request $request): \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
     {
         $request->validate([
             'email' => 'required|email',
@@ -79,6 +79,7 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($request->only('email', 'password'))) {
+            /** @var User $user */
             $user = Auth::user();
 
             if ($user->role !== 'teacher') {
@@ -86,6 +87,14 @@ class AuthController extends Controller
 
                 return back()->withErrors([
                     'email' => "This account is registered as a {$user->role}. Please use the {$user->role} login portal.",
+                ]);
+            }
+
+            if (! $user->isApproved()) {
+                Auth::logout();
+
+                return redirect()->route('teacher.login')->withErrors([
+                    'email' => 'Your account is awaiting admin approval. Please check back later.',
                 ]);
             }
 
@@ -113,10 +122,11 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => 'teacher',
+            'approval_status' => 'pending',
         ]);
 
         return redirect()->route('teacher.login')
-            ->with('success', 'Account created successfully! Please log in.');
+            ->with('success', 'Account created successfully! Please wait for admin approval before logging in.');
     }
 
     // ============ ADMIN ============

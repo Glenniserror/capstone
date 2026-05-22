@@ -1,7 +1,8 @@
 <?php
 
-use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\Admin\TeacherApprovalController;
 // Controllers
+use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\QuizController;
@@ -86,6 +87,14 @@ Route::prefix('admin')->group(function () {
     Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
         Route::post('/logout', [AuthController::class, 'logout'])->name('admin.logout');
+
+        // Teacher Approvals
+        Route::prefix('teachers')->group(function () {
+            Route::get('/approvals', [TeacherApprovalController::class, 'index'])->name('admin.teacher-approvals');
+            Route::post('/approve/{user}', [TeacherApprovalController::class, 'approve'])->name('admin.teacher.approve');
+            Route::post('/reject/{user}', [TeacherApprovalController::class, 'reject'])->name('admin.teacher.reject');
+            Route::post('/reset/{user}', [TeacherApprovalController::class, 'reset'])->name('admin.teacher.reset');
+        });
     });
 });
 

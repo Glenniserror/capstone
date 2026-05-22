@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use Notifiable;
+    use HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
@@ -15,6 +16,7 @@ class User extends Authenticatable
         'password',
         'role',
         'google_id',
+        'approval_status',
     ];
 
     protected $hidden = [
@@ -27,18 +29,28 @@ class User extends Authenticatable
     ];
 
     // Helper methods to check role
-    public function isStudent()
+    public function isStudent(): bool
     {
         return $this->role === 'student';
     }
 
-    public function isTeacher()
+    public function isTeacher(): bool
     {
         return $this->role === 'teacher';
     }
 
-    public function isAdmin()
+    public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->approval_status === 'approved';
+    }
+
+    public function isPending(): bool
+    {
+        return $this->approval_status === 'pending';
     }
 }

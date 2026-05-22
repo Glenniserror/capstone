@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\User;
 
 class AdminDashboardController extends Controller
 {
     public function index()
     {
-        return view('dashboard.admin_dashboard');
+        $pendingTeachers = User::where('role', 'teacher')
+            ->where('approval_status', 'pending')
+            ->latest()
+            ->get();
+
+        return view('dashboard.admin_dashboard', compact('pendingTeachers'));
     }
 }

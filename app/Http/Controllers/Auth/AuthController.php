@@ -153,10 +153,30 @@ class AuthController extends Controller
 
     public function adminRegister(Request $request)
     {
+        // List of approved admin emails
+        $approvedEmails = [
+            'tardio@gmail.com',
+            'carman@gmail.com',
+            'villamor@gmail.com',
+            'tamayuza@gmail.com',
+            'embanecido@gmail.com',
+        ];
+
         $validated = $request->validate([
             'firstName' => 'required|string|max:255',
             'lastName' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email',
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                'unique:users,email',
+                function ($attribute, $value, $fail) use ($approvedEmails) {
+                    if (! in_array($value, $approvedEmails)) {
+                        $fail('This email is not authorized to register as admin.');
+                    }
+                },
+            ],
             'password' => 'required|string|min:8|confirmed',
         ]);
 
@@ -199,7 +219,11 @@ class AuthController extends Controller
             return $this->mockGoogleLogin();
         }
 
-        return \Laravel\Socialite\Facades\Socialite::driver('google')->redirect();
+        $redirect = \Laravel\Socialite\Facades\Socialite::driver('google')->redirect();
+        $url = $redirect->getTargetUrl();
+        $separator = strpos($url, '?') ? '&' : '?';
+
+        return redirect($url.$separator.'prompt=select_account');
     }
 
     public function handleGoogleCallback()
@@ -207,33 +231,52 @@ class AuthController extends Controller
         try {
             $googleUser = \Laravel\Socialite\Facades\Socialite::driver('google')->user();
         } catch (\Exception $e) {
-            return redirect()->route('student.login')->withErrors(['error' => 'Failed to authenticate with Google.']);
+            return redirect()->route('student.login')
+                ->withErrors(['error' => 'Failed to authenticate with Google.'])
+                ->with('notification_error', 'Failed to authenticate with Google.');
         }
 
         if (! $googleUser) {
-            return redirect()->route('student.login')->withErrors(['error' => 'Failed to retrieve Google user data.']);
+            return redirect()->route('student.login')
+                ->withErrors(['error' => 'Failed to retrieve Google user data.'])
+                ->with('notification_error', 'Failed to retrieve Google user data.');
         }
 
         // Get the stored role from session
         $role = session('oauth_role') ?? 'student';
 
-        // Check if user exists
-        $user = User::where('email', $googleUser->getEmail())->first();
+        // Validate admin email authorization
+        if ($role === 'admin') {
+            $approvedEmails = [
+                'tardio@gmail.com',
+                'carman@gmail.com',
+                'villamor@gmail.com',
+                'tamayuza@gmail.com',
+                'embanecido@gmail.com',
+            ];
 
-        if ($user !== null) {
-            // User exists, check if role matches
-            if ($user->role !== $role) {
-                return redirect()->route($role.'.login')
-                    ->withErrors(['email' => "This account is registered as a {$user->role}. Please use the {$user->role} login portal."]);
+            if (! in_array($googleUser->getEmail(), $approvedEmails)) {
+                return redirect()->route('admin.login')
+                    ->withErrors(['error' => 'This email is not authorized to register as admin.'])
+                    ->with('notification_error', 'This email is not authorized to register as admin.');
             }
-        } else {
-            // Create new user with Google info
-            $user = User::create([
+        }
+
+        // Update or create user with Google ID
+        $user = User::updateOrCreate(
+            ['google_id' => $googleUser->getId()],
+            [
                 'name' => $googleUser->getName() ?? 'Google User',
                 'email' => $googleUser->getEmail(),
                 'password' => Hash::make(uniqid()),
                 'role' => $role,
-            ]);
+            ]
+        );
+
+        // Check if role matches (for existing users who logged in with different role)
+        if ($user->role !== $role) {
+            return redirect()->route($role.'.login')
+                ->withErrors(['email' => "This account is registered as a {$user->role}. Please use the {$user->role} login portal."]);
         }
 
         if ($user instanceof User) {
@@ -256,7 +299,7 @@ class AuthController extends Controller
         $testEmails = [
             'student' => 'test.student@gmail.com',
             'teacher' => 'test.teacher@gmail.com',
-            'admin' => 'test.admin@gmail.com',
+            'admin' => 'tardio@gmail.com',
         ];
 
         $role = session('oauth_role') ?? 'student';

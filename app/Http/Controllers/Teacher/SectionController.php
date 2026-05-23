@@ -42,11 +42,39 @@ class SectionController extends Controller
             ], 403);
         }
 
+        // Unassign students from this section
+        $section->users()->update(['section_id' => null]);
+
         $section->delete();
 
         return response()->json([
             'success' => true,
             'message' => 'Section deleted successfully!',
+        ]);
+    }
+
+    /**
+     * Update a section.
+     */
+    public function update(Request $request, Section $section)
+    {
+        if ($section->teacher_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized to update this section.',
+            ], 403);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255|unique:sections,name,'.$section->id,
+        ]);
+
+        $section->update(['name' => $request->name]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Section updated successfully!',
+            'section' => $section,
         ]);
     }
 

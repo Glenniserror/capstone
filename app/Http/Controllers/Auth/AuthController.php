@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Session;
 
 class AuthController extends Controller
 {
@@ -87,6 +88,58 @@ class AuthController extends Controller
         // Do NOT auto-login
         return redirect()->route('student.login')
             ->with('success', 'Account created successfully! Please wait for your teacher to approve your account before logging in.');
+    }
+
+    /**
+     * Show form for completing Google signup (section selection).
+     */
+    public function showGoogleSignupCompletion()
+    {
+        $userId = session('google_user_id');
+        if (! $userId) {
+            return redirect()->route('student.login')->withErrors(['error' => 'Invalid session.']);
+        }
+
+        $user = User::find($userId);
+        if (! $user || $user->section_id !== null) {
+            return redirect()->route('student.login');
+        }
+
+        $sections = Section::all();
+
+        return view('login.google-signup-completion', ['sections' => $sections, 'user' => $user]);
+    }
+
+    /**
+     * Complete Google signup by setting section.
+     */
+    public function completeGoogleSignup(Request $request)
+    {
+        $userId = session('google_user_id');
+        if (! $userId) {
+            return redirect()->route('student.login')->withErrors(['error' => 'Invalid session.']);
+        }
+
+        $validated = $request->validate([
+            'section_id' => 'required|exists:sections,id',
+        ]);
+
+        $user = User::find($userId);
+        if (! $user) {
+            return redirect()->route('student.login')->withErrors(['error' => 'User not found.']);
+        }
+
+        // Update user with section
+        $user->update([
+            'section_id' => $validated['section_id'],
+            'approval_status' => 'pending', // Mark for teacher approval
+        ]);
+
+        // Clear session
+        Session::forget('google_user_id');
+
+        return redirect()->route('student.login')
+            ->with('success', 'Account completed! Please wait for your teacher to approve your account before logging in.');
     }
 
     // ============ TEACHER ============
@@ -321,6 +374,10 @@ class AuthController extends Controller
             ]
         );
 
+        if (! ($user instanceof User)) {
+            return redirect()->route('student.login')->withErrors(['error' => 'Failed to create or retrieve user account.']);
+        }
+
         // Check if role matches (for existing users who logged in with different role)
         if ($user->role !== $role) {
             return redirect()->route($role.'.login')
@@ -335,6 +392,14 @@ class AuthController extends Controller
                 ->withErrors(['email' => 'Your account is awaiting admin approval. Please check back later.']);
         }
 
+        // Check if student needs to complete section selection (Google sign-up)
+        if ($user->role === 'student' && $isNewUser && $user->section_id === null) {
+            // Store user ID in session and redirect to section selection
+            session(['google_user_id' => $user->id, 'oauth_role' => 'student']);
+
+            return redirect()->route('student.complete-google-signup');
+        }
+
         // Check if student is approved
         if ($user->role === 'student' && $user->approval_status !== 'approved') {
             Auth::logout();
@@ -343,18 +408,14 @@ class AuthController extends Controller
                 ->withErrors(['email' => 'Your account is awaiting teacher approval. Please check back later.']);
         }
 
-        if ($user instanceof User) {
-            // Log the user in
-            Auth::login($user);
+        // Log the user in
+        Auth::login($user);
 
-            // Clear session only after successful authentication
-            session()->forget('oauth_role');
+        // Clear session only after successful authentication
+        Session::forget('oauth_role');
 
-            // Redirect to appropriate dashboard
-            return redirect()->route($role.'.dashboard');
-        }
-
-        return redirect()->route('student.login')->withErrors(['error' => 'Failed to create or retrieve user account.']);
+        // Redirect to appropriate dashboard
+        return redirect()->route($role.'.dashboard');
     }
 
     // Mock Google Login for Testing
@@ -389,6 +450,7 @@ class AuthController extends Controller
                 'approval_status' => $approvalStatus,
             ]);
         }
+        assert($user instanceof User, 'User must exist or be created');
 
         // Check if teacher is approved
         if ($user->role === 'teacher' && $user->approval_status !== 'approved') {
@@ -397,19 +459,12 @@ class AuthController extends Controller
         }
 
         // Log the user in
-        if ($user instanceof User) {
-            Auth::login($user);
+        Auth::login($user);
 
-            // Clear session only after successful authentication
-            session()->forget('oauth_role');
+        // Show success message
+        session(['google_auth_success' => true, 'google_auth_email' => $email]);
 
-            // Show success message
-            session(['google_auth_success' => true, 'google_auth_email' => $email]);
-
-            // Redirect to appropriate dashboard
-            return redirect()->route($role.'.dashboard');
-        }
-
-        return redirect()->route('student.login')->withErrors(['error' => 'Failed to create test user.']);
+        // Redirect to appropriate dashboard
+        return redirect()->route($role.'.dashboard');
     }
 }

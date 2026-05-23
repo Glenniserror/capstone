@@ -6,8 +6,9 @@ use App\Http\Controllers\Auth\AuthController;
 // Controllers
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\QuizController;
+use App\Http\Controllers\SectionController;
 use App\Http\Controllers\StudentDashboardController;
-use App\Http\Controllers\Teacher\SectionController;
+use App\Http\Controllers\Teacher\SectionController as TeacherSectionController;
 use App\Http\Controllers\Teacher\StudentApprovalController;
 use App\Http\Controllers\TeacherDashboardController;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +38,10 @@ Route::prefix('student')->group(function () {
     // Register
     Route::get('/register', [AuthController::class, 'showStudentRegisterForm'])->name('student.register.form');
     Route::post('/register', [AuthController::class, 'studentRegister'])->name('student.register');
+
+    // Google signup completion
+    Route::get('/complete-signup', [AuthController::class, 'showGoogleSignupCompletion'])->name('student.complete-google-signup');
+    Route::post('/complete-signup', [AuthController::class, 'completeGoogleSignup'])->name('student.complete-google-signup.submit');
 
     // Dashboard (Protected with student middleware - checks role and approval status)
     Route::middleware(['auth', 'student'])->group(function () {
@@ -75,14 +80,16 @@ Route::prefix('teacher')->group(function () {
 
         // Sections Management
         Route::prefix('sections')->group(function () {
-            Route::post('/', [SectionController::class, 'store'])->name('teacher.section.store');
-            Route::delete('/{section}', [SectionController::class, 'destroy'])->name('teacher.section.destroy');
-            Route::get('/list', [SectionController::class, 'list'])->name('teacher.section.list');
+            Route::post('/', [TeacherSectionController::class, 'store'])->name('teacher.section.store');
+            Route::put('/{section}', [TeacherSectionController::class, 'update'])->name('teacher.section.update');
+            Route::delete('/{section}', [TeacherSectionController::class, 'destroy'])->name('teacher.section.destroy');
+            Route::get('/list', [TeacherSectionController::class, 'list'])->name('teacher.section.list');
         });
     });
 });
 
 // ============ API ROUTES ============
+Route::get('/api/sections', [SectionController::class, 'index'])->name('api.sections');
 Route::get('/api/test', function () {
     return response()->json(['message' => 'API routing works']);
 })->name('api.test');

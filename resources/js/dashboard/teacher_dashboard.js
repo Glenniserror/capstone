@@ -288,11 +288,7 @@ let students    = [];
 let feedbacks   = [];
 let activity    = [];
 let modulesData = [];
-let sections    = [
-    { id: 1, name: 'Section 1', students: [] },
-    { id: 2, name: 'Section 2', students: [] },
-    { id: 3, name: 'Section 3', students: [] },
-];
+let sections    = [];
 
 let feedbackTargetId = null;
 let pendingFile      = null;
@@ -838,6 +834,140 @@ async function loadAndRenderModules() {
         setText('mod-total', '0'); setText('mod-published', '0');
         setText('mod-draft', '0'); setText('mod-completion', '0%');
     }
+}
+
+/* ============================================================
+   LOAD SECTIONS FROM DATABASE
+   ============================================================ */
+async function loadSections() {
+    try {
+        const response = await fetch('/api/sections');
+        if (!response.ok) throw new Error('Failed to fetch sections');
+        const data = await response.json();
+        sections = data.sections || [];
+    } catch (err) {
+        console.error('Error loading sections:', err);
+        sections = [];
+    }
+}
+
+/* ============================================================
+   SECTION MANAGEMENT FUNCTIONS
+   ============================================================ */
+function openAddSection() {
+    Swal.fire({
+        title: 'Add New Section',
+        html: `
+            <div style="text-align:left">
+                <label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:6px">
+                    Section name
+                </label>
+                <input type="text" id="swal-section-name"
+                       placeholder="e.g. Section A, Grade 10 – Einstein"
+                       style="width:100%;padding:11px 13px;background:#F1F5F9;
+                              border:1.5px solid transparent;border-radius:11px;
+                              font-size:14px;color:#333;outline:none;
+                              transition:.2s;box-sizing:border-box"
+                       onfocus="this.style.background='#fff';this.style.borderColor='#1E88E5'"
+                       onblur="this.style.background='#F1F5F9';this.style.borderColor='transparent'">
+                <p style="font-size:12px;color:#9ca3af;margin:8px 0 0">
+                    Students will see this name in the signup dropdown.
+                </p>
+            </div>`,
+        confirmButtonText: 'Add Section',
+        confirmButtonColor: '#1E88E5',
+        showCancelButton: true,
+        cancelButtonText: 'Cancel',
+        focusConfirm: false,
+        preConfirm: () => {
+            const name = document.getElementById('swal-section-name').value.trim();
+            if (!name) {
+                Swal.showValidationMessage('Please enter a section name');
+                return false;
+            }
+            return name;
+        }
+    }).then(result => {
+        if (result.isConfirmed) {
+            saveSectionToServer(result.value);
+        }
+    });
+}
+
+async function saveSectionToServer(name) {
+    try {
+        const res = await fetch('/teacher/sections', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({ name }),
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || 'Failed to create section');
+        }
+        Swal.fire({ icon: 'success', title: 'Section added!', text: `"${name}" is now visible in student signup.`, timer: 2000, showConfirmButton: false });
+        await loadSections();
+        renderReports();
+    } catch (err) {
+        Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+    }
+}
+
+function editSection(id, currentName) {
+    Swal.fire({
+        title: 'Edit Section',
+        input: 'text',
+        inputValue: currentName,
+        inputAttributes: { autocomplete: 'off' },
+        confirmButtonText: 'Save',
+        confirmButtonColor: '#1E88E5',
+        showCancelButton: true,
+        inputValidator: v => !v.trim() && 'Section name cannot be empty',
+    }).then(async result => {
+        if (!result.isConfirmed) return;
+        try {
+            const res = await fetch(`/teacher/sections/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ name: result.value.trim() }),
+            });
+            if (!res.ok) throw new Error('Failed to update section');
+            await loadSections();
+            renderReports();
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+        }
+    });
+}
+
+function deleteSection(id) {
+    Swal.fire({
+        title: 'Delete section?',
+        text: 'Students in this section will have their section unassigned.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Delete',
+        confirmButtonColor: '#ef4444',
+    }).then(async result => {
+        if (!result.isConfirmed) return;
+        try {
+            const res = await fetch(`/teacher/sections/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+            });
+            if (!res.ok) throw new Error('Failed to delete section');
+            await loadSections();
+            renderReports();
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+        }
+    });
 }
 
 function renderModules() {
@@ -3439,6 +3569,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initial modules load
     await loadAndRenderModules();
+    
+    // Load sections from database
+    await loadSections();
 
     renderHome();
     renderStudents();

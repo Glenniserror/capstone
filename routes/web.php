@@ -90,6 +90,8 @@ Route::prefix('teacher')->group(function () {
 
 // ============ API ROUTES ============
 Route::get('/api/sections', [SectionController::class, 'index'])->name('api.sections');
+Route::post('/api/sections', [SectionController::class, 'store'])->middleware('auth')->name('api.sections.store');
+Route::delete('/api/sections/{section}', [SectionController::class, 'destroy'])->middleware('auth')->name('api.sections.destroy');
 Route::get('/api/test', function () {
     return response()->json(['message' => 'API routing works']);
 })->name('api.test');

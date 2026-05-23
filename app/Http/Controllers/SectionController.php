@@ -12,13 +12,16 @@ class SectionController extends Controller
      */
     public function index(): \Illuminate\Http\JsonResponse
     {
-        $sections = Section::with('users')->orderBy('created_at')->get();
+        $sections = Section::with('students')->orderBy('created_at')->get();
 
         return response()->json([
             'sections' => $sections->map(fn ($s) => [
                 'id' => $s->id,
                 'name' => $s->name,
-                'students' => $s->users->pluck('id')->toArray(),
+                'students' => $s->students->pluck('id')->toArray(),
+                'students_count' => $s->students()->count(),
+                'avg_progress' => 0, // Placeholder - will be calculated based on actual performance data
+                'needs_attention' => 0, // Placeholder - will be calculated based on performance thresholds
             ]),
         ]);
     }
@@ -55,7 +58,7 @@ class SectionController extends Controller
         return response()->json([
             'id' => $section->id,
             'name' => $section->name,
-            'students' => $section->users->pluck('id')->toArray(),
+            'students' => $section->students->pluck('id')->toArray(),
         ]);
     }
 

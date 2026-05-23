@@ -19,16 +19,9 @@ class SectionFactory extends Factory
     {
         return [
             'name' => $this->faker->unique()->randomElement([
-                'Einstein',
-                'Newton',
-                'Curie',
-                'Darwin',
-                'Galileo',
-                'Hawking',
-                'Tesla',
-                'Feynman',
-                'Oppenheimer',
-                'Bohr',
+                'Section 1',
+                'Section 2',
+                'Section 3',
             ]),
             'teacher_id' => User::factory()->teacher()->approved(),
         ];

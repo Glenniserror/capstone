@@ -289,6 +289,7 @@ let feedbacks   = [];
 let activity    = [];
 let modulesData = [];
 let sections    = [];
+let allSections = [];  // Sections for Reports page display
 
 let feedbackTargetId = null;
 let pendingFile      = null;
@@ -320,7 +321,10 @@ function navigate(page) {
     if (page === 'home')     renderHome();
     if (page === 'students') renderStudents();
     if (page === 'progress') renderProgress();
-    if (page === 'reports')  renderReports();
+    if (page === 'reports')  {
+        loadSectionsForReports();
+        renderReports();
+    }
     if (page === 'modules')  loadAndRenderModules();  // always re-fetches
     if (page === 'profile')  renderProfile();
     if (page === 'quiz')     initQuizPage();           // init quiz on visit
@@ -534,227 +538,8 @@ function renderReports() {
     setText('r-avg',      avgProgress() + '%');
     setText('r-feedback', feedbacks.length);
 
-    const container = document.getElementById('sections-container');
-    if (!sections.length) {
-        container.innerHTML = `<div class="sections"><div class="section-card"><div class="empty-sec"><div class="empty-icon">📋</div><div class="empty-txt">No sections yet</div></div></div></div>`;
-        return;
-    }
-
-    const progressColors = ['#2563eb', '#10b981', '#f97316', '#ef4444'];
-
-    container.innerHTML = `<div class="sections">${sections.map((section, idx) => {
-        const sectionStudents    = students.filter(s => section.students.includes(s.id));
-        const borderColor        = ['#bfdbfe', '#bbf7d0', '#fed7aa', '#e9d5ff'][idx % 4];
-        const markerClass        = ['m-blue', 'm-green', 'm-orange', 'm-purple'][idx % 4];
-        const studentCount       = sectionStudents.length;
-        const avgSectionProgress = studentCount > 0
-            ? Math.round(sectionStudents.reduce((sum, s) => sum + (s.progress || 0), 0) / studentCount)
-            : 0;
-        const topStudent = sectionStudents.length > 0
-            ? sectionStudents.reduce((top, s) => (s.progress || 0) > (top.progress || 0) ? s : top)
-            : null;
-        const needsHelp = sectionStudents.filter(s => (s.progress || 0) < 50).length;
-
-        const studentRows = sectionStudents.length > 0
-            ? sectionStudents.map((s, i) => {
-                const progress = s.progress || 0;
-                let statusClass, statusText;
-                if (progress >= 80)      { statusClass = 'st-exc';  statusText = 'Excellent'; }
-                else if (progress >= 60) { statusClass = 'st-good'; statusText = 'Good'; }
-                else if (progress >= 40) { statusClass = 'st-avg';  statusText = 'Average'; }
-                else                     { statusClass = 'st-help'; statusText = 'Needs Help'; }
-
-                const ini      = s.name.split(' ').map(n => n[0]).join('').toUpperCase();
-                const avatarBg = ['linear-gradient(135deg,#60a5fa,#2563eb)', 'linear-gradient(135deg,#34d399,#10b981)', 'linear-gradient(135deg,#fb923c,#f97316)', 'linear-gradient(135deg,#f87171,#ef4444)'][i % 4];
-
-                return `
-                <div class="student-row">
-                    <div class="row-num">${i + 1}</div>
-                    <div class="s-avatar" style="background:${avatarBg}">${Security.escape(ini)}</div>
-                    <div class="s-info">
-                        <div class="s-name">${Security.escape(s.name)}</div>
-                        <div class="s-sub">Last active: ${s.lastActive || 'Today'}</div>
-                    </div>
-                    <div class="prog-wrap">
-                        <div class="prog-bar"><div class="prog-fill" style="width:${progress}%;background:${progressColors[progress >= 80 ? 0 : progress >= 60 ? 1 : progress >= 40 ? 2 : 3]}"></div></div>
-                        <span class="prog-pct">${progress}%</span>
-                    </div>
-                    <span class="s-status ${statusClass}">${statusText}</span>
-                </div>`;
-            }).join('')
-            : `<div class="empty-sec"><div class="empty-icon">👥</div><div class="empty-txt">No students in this section yet</div></div>`;
-
-        return `
-        <div class="section-card" style="border-color:${borderColor}">
-            <div class="section-top">
-                <div class="section-left">
-                    <div class="marker ${markerClass}">${idx + 1}</div>
-                    <div>
-                        <div class="sec-name">${Security.escape(section.name)}</div>
-                        <div class="sec-meta">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                            <span class="badge badge-blue">${studentCount} ${studentCount === 1 ? 'student' : 'students'}</span>
-                            <span class="badge badge-count">Avg: ${avgSectionProgress}%</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="sec-actions">
-                    <button class="icon-btn edit-btn" title="Edit" onclick="editSection(${section.id})">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </button>
-                    <button class="icon-btn del-btn" title="Delete" onclick="deleteSection(${section.id})">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                    </button>
-                </div>
-            </div>
-            <div class="section-body">${studentRows}</div>
-            <div class="sec-footer">
-                <span class="foot-stat">Top: <strong>${topStudent ? Security.escape(topStudent.name) + ' (' + (topStudent.progress || 0) + '%)' : 'N/A'}</strong></span>
-                <span class="foot-stat">Needs attention: <strong>${needsHelp} ${needsHelp === 1 ? 'student' : 'students'}</strong></span>
-            </div>
-        </div>`;
-    }).join('')}</div>`;
-}
-
-function openAddSection() {
-    Swal.fire({
-        title: 'Add New Section',
-        html: '<input id="sectionNameInput" class="swal2-input" placeholder="e.g., Section A" maxlength="255">',
-        icon: 'info', showCancelButton: true,
-        confirmButtonColor: '#2563eb', cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Create Section', cancelButtonText: 'Cancel',
-        didOpen: () => document.getElementById('sectionNameInput').focus(),
-    }).then(async (r) => {
-        if (!r.isConfirmed) return;
-        const sectionName = Security.sanitize(document.getElementById('sectionNameInput').value.trim());
-        if (!sectionName) {
-            return Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Please enter a section name.', confirmButtonColor: '#2563eb' });
-        }
-
-        try {
-            const response = await fetch('/teacher/sections', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                },
-                body: JSON.stringify({ name: sectionName }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                return Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.message || 'Failed to create section.',
-                    confirmButtonColor: '#2563eb'
-                });
-            }
-
-            // Add to local sections array and re-render
-            sections.push({
-                id: data.section.id,
-                name: data.section.name,
-                students_count: 0,
-                students: []
-            });
-            logActivity('Section Added', `Section "${sectionName}" was created`, 'section');
-            renderReports();
-            Swal.fire({
-                icon: 'success',
-                title: 'Section Created!',
-                text: `"${Security.escape(sectionName)}" added successfully.`,
-                confirmButtonColor: '#2563eb',
-                timer: 2000,
-                timerProgressBar: true
-            });
-        } catch (error) {
-            console.error('Error creating section:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'An error occurred while creating the section.',
-                confirmButtonColor: '#2563eb'
-            });
-        }
-    });
-}
-
-function editSection(sectionId) {
-    const section = sections.find(s => s.id === sectionId);
-    if (!section) return;
-    Swal.fire({
-        title: 'Edit Section',
-        html: `<input id="editSectionNameInput" class="swal2-input" value="${Security.escape(section.name)}" maxlength="50">`,
-        icon: 'info', showCancelButton: true,
-        confirmButtonColor: '#2563eb', cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Update Section', cancelButtonText: 'Cancel',
-        didOpen: () => { const i = document.getElementById('editSectionNameInput'); i.focus(); i.select(); },
-    }).then(r => {
-        if (!r.isConfirmed) return;
-        const newName = Security.sanitize(document.getElementById('editSectionNameInput').value.trim());
-        if (!newName) return Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Please enter a section name.', confirmButtonColor: '#2563eb' });
-        section.name = newName;
-        logActivity('Section Updated', `Section renamed to "${newName}"`, 'section');
-        renderReports();
-        Swal.fire({ icon: 'success', title: 'Section Updated!', text: `Renamed to "${Security.escape(newName)}"`, confirmButtonColor: '#2563eb', timer: 1500, timerProgressBar: true });
-    });
-}
-
-function deleteSection(sectionId) {
-    const section = sections.find(s => s.id === sectionId);
-    if (!section) return;
-    Swal.fire({
-        title: 'Delete Section?',
-        text: `"${Security.escape(section.name)}" will be permanently removed.`,
-        icon: 'warning', showCancelButton: true,
-        confirmButtonColor: '#ef4444', cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Delete', cancelButtonText: 'Cancel',
-    }).then(async (r) => {
-        if (!r.isConfirmed) return;
-
-        try {
-            const response = await fetch(`/teacher/sections/${sectionId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                },
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                return Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.message || 'Failed to delete section.',
-                    confirmButtonColor: '#2563eb'
-                });
-            }
-
-            // Remove from local sections array and re-render
-            sections = sections.filter(s => s.id !== sectionId);
-            logActivity('Section Deleted', `"${section.name}" removed`, 'section');
-            renderReports();
-            Swal.fire({
-                icon: 'success',
-                title: 'Section Deleted',
-                confirmButtonColor: '#2563eb',
-                timer: 1500,
-                timerProgressBar: true
-            });
-        } catch (error) {
-            console.error('Error deleting section:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'An error occurred while deleting the section.',
-                confirmButtonColor: '#2563eb'
-            });
-        }
-    });
+    // Display sections in the sections-container for management
+    renderSectionsContainer();
 }
 
 function generatePDFReport() {
@@ -839,6 +624,99 @@ async function loadAndRenderModules() {
 /* ============================================================
    LOAD SECTIONS FROM DATABASE
    ============================================================ */
+/* ============================================================
+   SECTIONS (Reports page) – Teacher Dashboard
+   ============================================================ */
+
+function loadSectionsForReports() {
+    fetch('/api/sections')
+        .then(r => r.json())
+        .then(data => {
+            allSections = data.sections || [];
+            renderSectionsContainer();
+        })
+        .catch(err => {
+            console.error('Error loading sections:', err);
+            allSections = [];
+            renderSectionsContainer();
+        });
+}
+
+function renderSectionsContainer() {
+    const container = document.getElementById('sections-container');
+    if (!allSections || allSections.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🏫</div>
+                <h4>No sections yet</h4>
+                <p>Click "Add Section" to create your first section.</p>
+            </div>`;
+        return;
+    }
+
+    const colors = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6', '#ec4899', '#06b6d4'];
+    
+    container.innerHTML = allSections.map((sec, idx) => {
+        const colorHex = colors[idx % colors.length];
+        const studentCount = sec.students_count || 0;
+        const avgProgress = sec.avg_progress || 0;
+        const needsAttention = sec.needs_attention || 0;
+        
+        return `
+            <div style="border:1px solid #e5e7eb;border-radius:16px;margin-bottom:20px;overflow:hidden;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+                <!-- Section Header -->
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:24px;border-bottom:1px solid #f3f4f6">
+                    <div style="display:flex;align-items:center;gap:16px;flex:1">
+                        <!-- Colored Badge -->
+                        <div style="width:56px;height:56px;background:${colorHex};color:white;border-radius:14px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;flex-shrink:0;box-shadow:0 2px 8px ${colorHex}33">
+                            ${idx + 1}
+                        </div>
+                        <!-- Section Info -->
+                        <div>
+                            <div style="font-weight:700;color:#111827;font-size:16px">${Security.escape(sec.name)}</div>
+                            <div style="font-size:13px;color:#6b7280;display:flex;gap:16px;margin-top:6px">
+                                <span>👥 <strong style="color:#4b5563">${studentCount}</strong> students</span>
+                                <span>📊 Avg: <strong style="color:#4b5563">${avgProgress}%</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Action Icons -->
+                    <div style="display:flex;gap:6px">
+                        <button onclick="editSection(${sec.id}, '${Security.escape(sec.name)}')" 
+                                style="background:none;border:none;cursor:pointer;padding:10px;color:#9ca3af;transition:color 0.2s;border-radius:8px;hover:{background:#f3f4f6;color:#6b7280}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                        </button>
+                        <button onclick="deleteSection(${sec.id})"
+                                style="background:none;border:none;cursor:pointer;padding:10px;color:#9ca3af;transition:color 0.2s;border-radius:8px;hover:{background:#fef2f2;color:#ef4444}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Section Content -->
+                <div style="padding:48px 24px;text-align:center;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fafbfc">
+                    ${studentCount === 0 
+                        ? `<div style="color:#d1d5db;font-size:64px;margin-bottom:12px;opacity:0.8">👥</div>
+                           <div style="color:#9ca3af;font-size:15px;font-weight:500">No students in this section yet</div>`
+                        : `<div style="font-size:16px;color:#111827;font-weight:600"><strong>${studentCount}</strong> students enrolled</div>
+                           <div style="font-size:14px;color:#6b7280;margin-top:6px">Average progress: <strong>${avgProgress}%</strong></div>`
+                    }
+                </div>
+                
+                <!-- Section Footer -->
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 24px;background:#f9fafb;border-top:1px solid #f3f4f6;font-size:13px;color:#6b7280">
+                    <span>Top: <strong style="color:#111827">N/A</strong></span>
+                    <span>Needs attention: <strong style="color:#111827">${needsAttention} students</strong></span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 async function loadSections() {
     try {
         const response = await fetch('/api/sections');
@@ -909,8 +787,7 @@ async function saveSectionToServer(name) {
             throw new Error(err.message || 'Failed to create section');
         }
         Swal.fire({ icon: 'success', title: 'Section added!', text: `"${name}" is now visible in student signup.`, timer: 2000, showConfirmButton: false });
-        await loadSections();
-        renderReports();
+        await loadSectionsForReports();
     } catch (err) {
         Swal.fire({ icon: 'error', title: 'Error', text: err.message });
     }
@@ -938,8 +815,7 @@ function editSection(id, currentName) {
                 body: JSON.stringify({ name: result.value.trim() }),
             });
             if (!res.ok) throw new Error('Failed to update section');
-            await loadSections();
-            renderReports();
+            await loadSectionsForReports();
         } catch (err) {
             Swal.fire({ icon: 'error', title: 'Error', text: err.message });
         }
@@ -962,8 +838,8 @@ function deleteSection(id) {
                 headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
             });
             if (!res.ok) throw new Error('Failed to delete section');
-            await loadSections();
-            renderReports();
+            await loadSectionsForReports();
+            Swal.fire('Deleted!', '', 'success');
         } catch (err) {
             Swal.fire({ icon: 'error', title: 'Error', text: err.message });
         }

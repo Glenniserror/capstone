@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Section;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class SectionSeeder extends Seeder
 {
@@ -17,19 +18,20 @@ class SectionSeeder extends Seeder
         $teacher = User::where('role', 'teacher')->where('approval_status', 'approved')->first();
 
         if (! $teacher) {
-            $teacher = User::factory()->teacher()->approved()->create([
-                'email' => 'teacher@example.com',
+            $teacher = User::create([
                 'name' => 'Default Teacher',
+                'email' => 'teacher@example.com',
+                'password' => Hash::make('password'),
+                'role' => 'teacher',
+                'approval_status' => 'approved',
             ]);
         }
 
         // Create default sections
         $sectionNames = [
-            'Einstein',
-            'Newton',
-            'Curie',
-            'Darwin',
-            'Galileo',
+            'Section 1',
+            'Section 2',
+            'Section 3',
         ];
 
         foreach ($sectionNames as $name) {

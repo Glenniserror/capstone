@@ -392,13 +392,8 @@
           <label for="section-search-input">Section</label>
 
           {{-- Hidden real select that gets submitted with the form --}}
-          <select name="section_id" id="section_id" style="display:none" required>
+          <select name="section_id" id="section_id" style="display:none">
             <option value="" disabled selected></option>
-            @if(isset($sections) && $sections->count() > 0)
-              @foreach($sections as $section)
-                <option value="{{ $section->id }}">{{ $section->name }}</option>
-              @endforeach
-            @endif
           </select>
 
           <div class="section-search-box">
@@ -415,23 +410,10 @@
           </div>
 
           <div class="section-dropdown" id="section-dropdown">
-            @if(isset($sections) && $sections->count() > 0)
-              @foreach($sections as $index => $section)
-                <div
-                  class="section-option"
-                  data-value="{{ $section->id }}"
-                  data-label="{{ $section->name }}"
-                >
-                  <span class="badge">{{ $index + 1 }}</span>
-                  {{ $section->name }}
-                </div>
-              @endforeach
-            @else
-              <div class="section-option no-result">
-                <i class="fa-solid fa-circle-info" style="color:#ccc"></i>
-                No sections available yet
-              </div>
-            @endif
+            <div class="section-option no-result">
+              <i class="fa-solid fa-circle-info" style="color:#ccc"></i>
+              Loading sections...
+            </div>
           </div>
 
           @error('section_id')
@@ -560,71 +542,179 @@ function validateSection(event) {
   return true;
 }
 
+// Fetch sections from API on page load
+function loadSections() {
+  fetch('/api/sections')
+    .then(response => response.json())
+    .then(data => {
+      const dropdown = document.getElementById('section-dropdown');
+      const sections = data.sections || [];
+
+      if (sections.length === 0) {
+        dropdown.innerHTML = '<div class="section-option no-result"><i class="fa-solid fa-circle-info" style="color:#ccc"></i> No sections available yet</div>';
+        return;
+      }
+
+      // Clear dropdown and populate with fetched sections
+      dropdown.innerHTML = '';
+      sections.forEach((section, index) => {
+        const opt = document.createElement('div');
+        opt.className = 'section-option';
+        opt.dataset.value = section.id;
+        opt.dataset.label = section.name;
+        opt.innerHTML = `<span class="badge">${index + 1}</span> ${section.name}`;
+        dropdown.appendChild(opt);
+
+        // Add click handler
+        opt.addEventListener('click', function() {
+          const hidden = document.getElementById('section_id');
+          const input = document.getElementById('section-search-input');
+          hidden.value = this.dataset.value;
+          input.value = this.dataset.label;
+          
+          // Clear error styling
+          input.style.borderColor = '';
+          input.style.background = '';
+          const errorMsg = document.getElementById('section-error-msg');
+          if (errorMsg) errorMsg.textContent = '';
+          
+          closeDrop();
+        });
+      });
+    })
+    .catch(error => {
+      console.error('Error loading sections:', error);
+      const dropdown = document.getElementById('section-dropdown');
+      dropdown.innerHTML = '<div class="section-option no-result"><i class="fa-solid fa-circle-info" style="color:#ccc"></i> Error loading sections</div>';
+    });
+}
+
 // Set initial form action on page load
 document.addEventListener('DOMContentLoaded', function() {
   const form = document.getElementById('signupForm');
   form.action = roleRoutes['student'];
   document.getElementById('section-row').style.display = 'block';
+  loadSections();
 });
 
 // ═════════════════════════════════════════════════════════════
 // SECTION PICKER DROPDOWN HANDLER
 // ═════════════════════════════════════════════════════════════
-(function() {
-  const wrap    = document.getElementById('section-row');
-  const input   = document.getElementById('section-search-input');
-  const dropdown= document.getElementById('section-dropdown');
-  const hidden  = document.getElementById('section_id');
 
-  if (!wrap) return;
-
-  function openDrop() {
-    wrap.classList.add('open');
-    dropdown.classList.add('open');
-    input.removeAttribute('readonly');
-    input.focus();
+// Section Picker Variables (global so they can be accessed from dynamically added handlers)
+let sectionPickerState = {
+  wrap: null,
+  input: null,
+  dropdown: null,
+  hidden: null,
+  openDrop() {
+    this.wrap.classList.add('open');
+    this.dropdown.classList.add('open');
+    this.input.removeAttribute('readonly');
+    this.input.focus();
+  },
+  closeDrop() {
+    this.wrap.classList.remove('open');
+    this.dropdown.classList.remove('open');
+    this.input.setAttribute('readonly', true);
   }
-  function closeDrop() {
-    wrap.classList.remove('open');
-    dropdown.classList.remove('open');
-    input.setAttribute('readonly', true);
-  }
+};
 
-  input.addEventListener('click', openDrop);
-  input.addEventListener('keydown', e => { if (!dropdown.classList.contains('open')) openDrop(); });
+// Fetch sections from API on page load
+function loadSections() {
+  fetch('/api/sections')
+    .then(response => response.json())
+    .then(data => {
+      const dropdown = document.getElementById('section-dropdown');
+      const hiddenSelect = document.getElementById('section_id');
+      const sections = data.sections || [];
 
-  input.addEventListener('input', function() {
+      if (sections.length === 0) {
+        dropdown.innerHTML = '<div class="section-option no-result"><i class="fa-solid fa-circle-info" style="color:#ccc"></i> No sections available yet</div>';
+        return;
+      }
+
+      // Clear dropdown and populate with fetched sections
+      dropdown.innerHTML = '';
+      
+      // Also populate the hidden select element
+      hiddenSelect.innerHTML = '<option value="" disabled selected></option>';
+      
+      sections.forEach((section, index) => {
+        // Add option to hidden select for form submission
+        const selectOption = document.createElement('option');
+        selectOption.value = section.id;
+        selectOption.textContent = section.name;
+        hiddenSelect.appendChild(selectOption);
+        
+        // Create visual dropdown option
+        const opt = document.createElement('div');
+        opt.className = 'section-option';
+        opt.dataset.value = section.id;
+        opt.dataset.label = section.name;
+        opt.innerHTML = `<span class="badge">${index + 1}</span> ${section.name}`;
+        dropdown.appendChild(opt);
+
+        // Add click handler
+        opt.addEventListener('click', function() {
+          sectionPickerState.hidden.value = this.dataset.value;
+          sectionPickerState.input.value = this.dataset.label;
+          
+          // Clear error styling
+          sectionPickerState.input.style.borderColor = '';
+          sectionPickerState.input.style.background = '';
+          const errorMsg = document.getElementById('section-error-msg');
+          if (errorMsg) errorMsg.textContent = '';
+          
+          sectionPickerState.closeDrop();
+        });
+      });
+    })
+    .catch(error => {
+      console.error('Error loading sections:', error);
+      const dropdown = document.getElementById('section-dropdown');
+      dropdown.innerHTML = '<div class="section-option no-result"><i class="fa-solid fa-circle-info" style="color:#ccc"></i> Error loading sections</div>';
+    });
+}
+
+// Initialize section picker dropdown handler
+function initSectionPicker() {
+  sectionPickerState.wrap = document.getElementById('section-row');
+  sectionPickerState.input = document.getElementById('section-search-input');
+  sectionPickerState.dropdown = document.getElementById('section-dropdown');
+  sectionPickerState.hidden = document.getElementById('section_id');
+
+  if (!sectionPickerState.wrap) return;
+
+  sectionPickerState.input.addEventListener('click', () => sectionPickerState.openDrop());
+  sectionPickerState.input.addEventListener('keydown', e => { if (!sectionPickerState.dropdown.classList.contains('open')) sectionPickerState.openDrop(); });
+
+  sectionPickerState.input.addEventListener('input', function() {
     const q = this.value.toLowerCase();
     let any = false;
-    dropdown.querySelectorAll('.section-option').forEach(opt => {
+    sectionPickerState.dropdown.querySelectorAll('.section-option').forEach(opt => {
       if (opt.classList.contains('no-result')) return;
       const match = opt.dataset.label.toLowerCase().includes(q);
       opt.style.display = match ? '' : 'none';
       if (match) any = true;
     });
-    const noRes = dropdown.querySelector('.no-result');
+    const noRes = sectionPickerState.dropdown.querySelector('.no-result');
     if (noRes) noRes.style.display = any ? 'none' : '';
   });
 
-  dropdown.querySelectorAll('.section-option:not(.no-result)').forEach(opt => {
-    opt.addEventListener('click', function() {
-      hidden.value    = this.dataset.value;
-      input.value     = this.dataset.label;
-      
-      // Clear error styling
-      input.style.borderColor = '';
-      input.style.background = '';
-      const errorMsg = document.getElementById('section-error-msg');
-      if (errorMsg) errorMsg.textContent = '';
-      
-      closeDrop();
-    });
-  });
-
   document.addEventListener('click', e => {
-    if (!wrap.contains(e.target)) closeDrop();
+    if (!sectionPickerState.wrap.contains(e.target)) sectionPickerState.closeDrop();
   });
-})();
+}
+
+// Set initial form action on page load
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('signupForm');
+  form.action = roleRoutes['student'];
+  document.getElementById('section-row').style.display = 'block';
+  initSectionPicker();
+  loadSections();
+});
 </script>
 </body>
 </html>

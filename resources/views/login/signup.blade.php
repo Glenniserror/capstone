@@ -314,8 +314,18 @@
           <label>Section</label>
           <div class="iw">
             <i class="fa-solid fa-school ico"></i>
-            <input type="text" name="section" id="section" placeholder="e.g. Einstein" value="{{ old('section') }}">
+            <select name="section_id" id="section_id" required style="appearance: none; background: transparent; border: none; width: 100%; padding: 8px 0; font-size: 14px; color: #333;">
+              <option value="" selected disabled>Select a section</option>
+              @if(isset($sections) && $sections->count() > 0)
+                @foreach($sections as $section)
+                  <option value="{{ $section->id }}">{{ $section->name }}</option>
+                @endforeach
+              @else
+                <option value="" disabled>No sections available</option>
+              @endif
+            </select>
           </div>
+          @error('section_id')<p style="color: red; font-size: 12px; margin-top: 5px;">{{ $message }}</p>@enderror
         </div>
 
         <div class="ig">

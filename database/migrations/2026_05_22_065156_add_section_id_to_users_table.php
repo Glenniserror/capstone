@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->enum('approval_status', ['pending', 'approved', 'rejected'])->default('pending')->after('role');
+            $table->foreignId('section_id')->nullable()->constrained('sections')->nullOnDelete()->after('role');
         });
     }
 
@@ -22,7 +22,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('approval_status');
+            $table->dropForeignKeyIfExists(['section_id']);
+            $table->dropColumn('section_id');
         });
     }
 };

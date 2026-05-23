@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\Admin\TeacherApprovalController;
-// Controllers
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\AuthController;
+// Controllers
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\StudentDashboardController;
+use App\Http\Controllers\Teacher\SectionController;
+use App\Http\Controllers\Teacher\StudentApprovalController;
 use App\Http\Controllers\TeacherDashboardController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,8 +38,8 @@ Route::prefix('student')->group(function () {
     Route::get('/register', [AuthController::class, 'showStudentRegisterForm'])->name('student.register.form');
     Route::post('/register', [AuthController::class, 'studentRegister'])->name('student.register');
 
-    // Dashboard (Protected with role middleware)
-    Route::middleware(['auth', 'role:student'])->group(function () {
+    // Dashboard (Protected with student middleware - checks role and approval status)
+    Route::middleware(['auth', 'student'])->group(function () {
         Route::get('/dashboard', [StudentDashboardController::class, 'index'])->name('student.dashboard');
         Route::get('/modules', function () {
             return view('dashboard.module');
@@ -62,6 +64,21 @@ Route::prefix('teacher')->group(function () {
         Route::get('/dashboard', [TeacherDashboardController::class, 'index'])->name('teacher.dashboard');
         Route::post('/logout', [AuthController::class, 'logout'])->name('teacher.logout');
         Route::post('/teacher/generate-quiz', [QuizController::class, 'generate'])->name('quiz.generate');
+
+        // Student Approvals
+        Route::prefix('students')->group(function () {
+            Route::get('/approvals', [StudentApprovalController::class, 'index'])->name('teacher.student-approvals');
+            Route::post('/approve/{user}', [StudentApprovalController::class, 'approve'])->name('teacher.student.approve');
+            Route::post('/reject/{user}', [StudentApprovalController::class, 'reject'])->name('teacher.student.reject');
+            Route::post('/reset/{user}', [StudentApprovalController::class, 'reset'])->name('teacher.student.reset');
+        });
+
+        // Sections Management
+        Route::prefix('sections')->group(function () {
+            Route::post('/', [SectionController::class, 'store'])->name('teacher.section.store');
+            Route::delete('/{section}', [SectionController::class, 'destroy'])->name('teacher.section.destroy');
+            Route::get('/list', [SectionController::class, 'list'])->name('teacher.section.list');
+        });
     });
 });
 

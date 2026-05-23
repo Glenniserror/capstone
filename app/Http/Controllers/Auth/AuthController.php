@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Section;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,12 +17,24 @@ class AuthController extends Controller
         return view('login.signin', ['portalType' => 'student']);
     }
 
+    public function showStudentRegisterForm()
+    {
+        $sections = Section::all();
+
+        return view('login.signup', ['sections' => $sections, 'portalType' => 'student']);
+    }
+
     public function studentLogin(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
+
+        $userExists = User::where('email', $request->email)->exists();
+        if (! $userExists) {
+            return back()->withErrors(['email' => 'No account found with this email. Please register first.'])->onlyInput('email');
+        }
 
         if (Auth::attempt($request->only('email', 'password'))) {
             $user = Auth::user();
@@ -31,6 +44,14 @@ class AuthController extends Controller
 
                 return back()->withErrors([
                     'email' => "This account is registered as a {$user->role}. Please use the {$user->role} login portal.",
+                ]);
+            }
+
+            if ($user->approval_status !== 'approved') {
+                Auth::logout();
+
+                return redirect()->route('student.login')->withErrors([
+                    'email' => 'Your account is awaiting teacher approval. Please check back later.',
                 ]);
             }
 
@@ -48,6 +69,7 @@ class AuthController extends Controller
             'firstName' => 'required|string|max:255',
             'lastName' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
+            'section_id' => 'required|exists:sections,id',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
@@ -58,11 +80,13 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => 'student',
+            'section_id' => $validated['section_id'],
+            'approval_status' => 'pending',
         ]);
 
         // Do NOT auto-login
         return redirect()->route('student.login')
-            ->with('success', 'Account created successfully! Please log in.');
+            ->with('success', 'Account created successfully! Please wait for your teacher to approve your account before logging in.');
     }
 
     // ============ TEACHER ============
@@ -78,6 +102,11 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
+        $userExists = User::where('email', $request->email)->exists();
+        if (! $userExists) {
+            return back()->withErrors(['email' => 'No account found with this email. Please register first.'])->onlyInput('email');
+        }
+
         if (Auth::attempt($request->only('email', 'password'))) {
             /** @var User $user */
             $user = Auth::user();
@@ -90,11 +119,11 @@ class AuthController extends Controller
                 ]);
             }
 
-            if (! $user->isApproved()) {
+            if ($user->approval_status !== 'approved') {
                 Auth::logout();
 
                 return redirect()->route('teacher.login')->withErrors([
-                    'email' => 'Your account is awaiting admin approval. Please check back later.',
+                    'email' => 'Your account is awaiting approval from an administrator. Please contact support.',
                 ]);
             }
 
@@ -141,6 +170,11 @@ class AuthController extends Controller
             'email' => 'required|email',
             'password' => 'required',
         ]);
+
+        $userExists = User::where('email', $request->email)->exists();
+        if (! $userExists) {
+            return back()->withErrors(['email' => 'No account found with this email. Please register first.'])->onlyInput('email');
+        }
 
         if (Auth::attempt($request->only('email', 'password'))) {
             $user = Auth::user();
@@ -273,6 +307,9 @@ class AuthController extends Controller
         }
 
         // Update or create user with Google ID
+        $isNewUser = ! User::where('google_id', $googleUser->getId())->exists();
+        $approvalStatus = $isNewUser && $role !== 'admin' ? 'pending' : 'approved';
+
         $user = User::updateOrCreate(
             ['google_id' => $googleUser->getId()],
             [
@@ -280,6 +317,7 @@ class AuthController extends Controller
                 'email' => $googleUser->getEmail(),
                 'password' => Hash::make(uniqid()),
                 'role' => $role,
+                'approval_status' => $approvalStatus,
             ]
         );
 
@@ -287,6 +325,22 @@ class AuthController extends Controller
         if ($user->role !== $role) {
             return redirect()->route($role.'.login')
                 ->withErrors(['email' => "This account is registered as a {$user->role}. Please use the {$user->role} login portal."]);
+        }
+
+        // Check if teacher is approved
+        if ($user->role === 'teacher' && $user->approval_status !== 'approved') {
+            Auth::logout();
+
+            return redirect()->route('teacher.login')
+                ->withErrors(['email' => 'Your account is awaiting admin approval. Please check back later.']);
+        }
+
+        // Check if student is approved
+        if ($user->role === 'student' && $user->approval_status !== 'approved') {
+            Auth::logout();
+
+            return redirect()->route('student.login')
+                ->withErrors(['email' => 'Your account is awaiting teacher approval. Please check back later.']);
         }
 
         if ($user instanceof User) {
@@ -325,13 +379,21 @@ class AuthController extends Controller
                     ->withErrors(['email' => "This account is registered as a {$user->role}. Please use the {$user->role} login portal."]);
             }
         } else {
-            // Create new test user
+            // Create new test user - teachers start with pending status
+            $approvalStatus = $role === 'teacher' ? 'pending' : 'approved';
             $user = User::create([
                 'name' => ucfirst($role).' Test User',
                 'email' => $email,
                 'password' => Hash::make('test12345'),
                 'role' => $role,
+                'approval_status' => $approvalStatus,
             ]);
+        }
+
+        // Check if teacher is approved
+        if ($user->role === 'teacher' && $user->approval_status !== 'approved') {
+            return redirect()->route('teacher.login')
+                ->withErrors(['email' => 'Your account is awaiting admin approval. Please check back later.']);
         }
 
         // Log the user in

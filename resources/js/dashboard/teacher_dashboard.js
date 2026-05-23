@@ -623,19 +623,65 @@ function renderReports() {
 function openAddSection() {
     Swal.fire({
         title: 'Add New Section',
-        html: '<input id="sectionNameInput" class="swal2-input" placeholder="e.g., Section A" maxlength="50">',
+        html: '<input id="sectionNameInput" class="swal2-input" placeholder="e.g., Section A" maxlength="255">',
         icon: 'info', showCancelButton: true,
         confirmButtonColor: '#2563eb', cancelButtonColor: '#6b7280',
         confirmButtonText: 'Create Section', cancelButtonText: 'Cancel',
         didOpen: () => document.getElementById('sectionNameInput').focus(),
-    }).then(r => {
+    }).then(async (r) => {
         if (!r.isConfirmed) return;
         const sectionName = Security.sanitize(document.getElementById('sectionNameInput').value.trim());
-        if (!sectionName) return Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Please enter a section name.', confirmButtonColor: '#2563eb' });
-        sections.push({ id: Date.now(), name: sectionName, students: [] });
-        logActivity('Section Added', `Section "${sectionName}" was created`, 'section');
-        renderReports();
-        Swal.fire({ icon: 'success', title: 'Section Created!', text: `"${Security.escape(sectionName)}" added.`, confirmButtonColor: '#2563eb', timer: 2000, timerProgressBar: true });
+        if (!sectionName) {
+            return Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Please enter a section name.', confirmButtonColor: '#2563eb' });
+        }
+
+        try {
+            const response = await fetch('/teacher/sections', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                },
+                body: JSON.stringify({ name: sectionName }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message || 'Failed to create section.',
+                    confirmButtonColor: '#2563eb'
+                });
+            }
+
+            // Add to local sections array and re-render
+            sections.push({
+                id: data.section.id,
+                name: data.section.name,
+                students_count: 0,
+                students: []
+            });
+            logActivity('Section Added', `Section "${sectionName}" was created`, 'section');
+            renderReports();
+            Swal.fire({
+                icon: 'success',
+                title: 'Section Created!',
+                text: `"${Security.escape(sectionName)}" added successfully.`,
+                confirmButtonColor: '#2563eb',
+                timer: 2000,
+                timerProgressBar: true
+            });
+        } catch (error) {
+            console.error('Error creating section:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'An error occurred while creating the section.',
+                confirmButtonColor: '#2563eb'
+            });
+        }
     });
 }
 
@@ -669,12 +715,49 @@ function deleteSection(sectionId) {
         icon: 'warning', showCancelButton: true,
         confirmButtonColor: '#ef4444', cancelButtonColor: '#6b7280',
         confirmButtonText: 'Delete', cancelButtonText: 'Cancel',
-    }).then(r => {
+    }).then(async (r) => {
         if (!r.isConfirmed) return;
-        sections = sections.filter(s => s.id !== sectionId);
-        logActivity('Section Deleted', `"${section.name}" removed`, 'section');
-        renderReports();
-        Swal.fire({ icon: 'success', title: 'Section Deleted', confirmButtonColor: '#2563eb', timer: 1500, timerProgressBar: true });
+
+        try {
+            const response = await fetch(`/teacher/sections/${sectionId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                },
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message || 'Failed to delete section.',
+                    confirmButtonColor: '#2563eb'
+                });
+            }
+
+            // Remove from local sections array and re-render
+            sections = sections.filter(s => s.id !== sectionId);
+            logActivity('Section Deleted', `"${section.name}" removed`, 'section');
+            renderReports();
+            Swal.fire({
+                icon: 'success',
+                title: 'Section Deleted',
+                confirmButtonColor: '#2563eb',
+                timer: 1500,
+                timerProgressBar: true
+            });
+        } catch (error) {
+            console.error('Error deleting section:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'An error occurred while deleting the section.',
+                confirmButtonColor: '#2563eb'
+            });
+        }
     });
 }
 

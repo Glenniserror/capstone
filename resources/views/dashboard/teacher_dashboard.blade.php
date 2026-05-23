@@ -309,6 +309,31 @@
                 </div>
 
                 <div class="modules-container">
+                    @if ($pendingStudents->count() > 0)
+                    <div class="section-label">⚠️ Pending Student Approvals</div>
+                    <div class="section-sub">{{ $pendingStudents->count() }} student(s) awaiting your approval</div>
+                    <div class="pending-teachers-list" style="margin-bottom: 2rem;">
+                        @foreach ($pendingStudents as $student)
+                        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; margin-bottom: 0.75rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 600; color: #78350f;">{{ $student->name }}</div>
+                                <div style="font-size: 0.875rem; color: #92400e;">{{ $student->email }}</div>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <form method="POST" action="{{ route('teacher.student.approve', $student->id) }}" style="display: inline;">
+                                    @csrf
+                                    <button type="submit" style="padding: 0.5rem 1rem; background: #10b981; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">Approve</button>
+                                </form>
+                                <form method="POST" action="{{ route('teacher.student.reject', $student->id) }}" style="display: inline;">
+                                    @csrf
+                                    <button type="submit" style="padding: 0.5rem 1rem; background: #ef4444; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">Reject</button>
+                                </form>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    @endif
+
                     <div class="section-label">All Students</div>
                     <div class="section-sub">Search, filter, and manage your students</div>
                     <div class="toolbar">

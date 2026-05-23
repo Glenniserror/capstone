@@ -10,36 +10,24 @@ class AdminSeeder extends Seeder
 {
     public function run(): void
     {
-        // Admin user
-        User::create([
-            'name' => 'Admin',
-            'email' => 'tardio@gmail.com',
-            'password' => Hash::make('12345678'),
-            'role' => 'admin',
-        ]);
-        User::create([
-            'name' => 'Admin',
-            'email' => 'carman@gmail.com',
-            'password' => Hash::make('12345678'),
-            'role' => 'admin',
-        ]);
-        User::create([
-            'name' => 'Admin',
-            'email' => 'villamor@gmail.com',
-            'password' => Hash::make('12345678'),
-            'role' => 'admin',
-        ]);
-        User::create([
-            'name' => 'Admin',
-            'email' => 'tamayuza@gmail.com',
-            'password' => Hash::make('12345678'),
-            'role' => 'admin',
-        ]);
-        User::create([
-            'name' => 'Admin',
-            'email' => 'embanecido@gmail.com',
-            'password' => Hash::make('12345678'),
-            'role' => 'admin',
-        ]);
+        $admins = [
+            'tardio@gmail.com',
+            'carman@gmail.com',
+            'villamor@gmail.com',
+            'tamayuza@gmail.com',
+            'embanecido@gmail.com',
+        ];
+
+        foreach ($admins as $email) {
+            User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'name' => 'Admin',
+                    'password' => Hash::make('12345678'),
+                    'role' => 'admin',
+                    'approval_status' => 'approved',
+                ]
+            );
+        }
     }
 }

@@ -70,6 +70,14 @@
         // ✅ Initialize Supabase client globally BEFORE JS loads
         const { createClient } = supabase;
         window.supabaseClient = createClient(window.__ENV__.SUPABASE_URL, window.__ENV__.SUPABASE_ANON_KEY);
+
+        // ✅ Expose authenticated user to frontend
+        window.__USER__ = {
+            id:    "{{ auth()->user()->id }}",
+            name:  "{{ auth()->user()->name }}",
+            email: "{{ auth()->user()->email }}",
+            role:  "{{ auth()->user()->role ?? 'student' }}",
+        };
     </script>
 
 </head>

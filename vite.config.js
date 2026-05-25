@@ -12,17 +12,13 @@ export default defineConfig({
                 'resources/css/homepage.css',
                 'resources/js/homepage.js',
 
-                // Student
-                'resources/css/login/student_login.css',
-                'resources/js/login/student_login.js',
-
-                // Teacher
-                'resources/css/login/teacher_login.css',
-                'resources/js/login/teacher_login.js',
-
-                // Admin
-                'resources/css/login/admin_login.css',
-                'resources/js/login/admin_login.js',
+                // Login files handled inline in Blade templates (no separate CSS/JS files)
+                // 'resources/css/login/student_login.css',
+                // 'resources/js/login/student_login.js',
+                // 'resources/css/login/teacher_login.css',
+                // 'resources/js/login/teacher_login.js',
+                // 'resources/css/login/admin_login.css',
+                // 'resources/js/login/admin_login.js',
 
                 // Dashboard Assets
                 'resources/css/dashboard/student_dashboard.css',
@@ -33,8 +29,8 @@ export default defineConfig({
                 'resources/js/dashboard/teacher_dashboard.js',
                 'resources/css/dashboard/admin_dashboard.css',
                 'resources/js/dashboard/admin_dashboard.js',
-                'resources/css/dashboard/module_quiz.css',
-                'resources/js/dashboard/module_quiz.js',
+                // 'resources/css/dashboard/module_quiz.css',
+                // 'resources/js/dashboard/module_quiz.js',
             ],
             refresh: true,
         }),

@@ -412,6 +412,189 @@ document.addEventListener('DOMContentLoaded', function () {
         startQuiz();
     }
 
+    /* ================================
+       SUPABASE PROGRESS TRACKING
+       ================================ */
+
+    const Progress = {
+        userId: window.__USER__?.id ?? null,
+
+        // ✅ Async Supabase helpers
+        async sbSelect(table, select = '*', filters = {}) {
+            let url = `${window.__ENV__.SUPABASE_URL}/rest/v1/${table}?select=${select}`;
+            Object.entries(filters).forEach(([col, val]) => {
+                if (typeof val === 'string') url += `&${col}=eq.${encodeURIComponent(val)}`;
+                else if (typeof val === 'number') url += `&${col}=eq.${val}`;
+            });
+            const res = await fetch(url, {
+                headers: {
+                    'apikey': window.__ENV__.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.__ENV__.SUPABASE_ANON_KEY}`
+                }
+            });
+            return res.ok ? await res.json() : [];
+        },
+
+        async sbInsert(table, data) {
+            const res = await fetch(`${window.__ENV__.SUPABASE_URL}/rest/v1/${table}`, {
+                method: 'POST',
+                headers: {
+                    'apikey': window.__ENV__.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.__ENV__.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(data)
+            });
+            return res.ok ? await res.json() : null;
+        },
+
+        async sbUpsert(table, data) {
+            const res = await fetch(`${window.__ENV__.SUPABASE_URL}/rest/v1/${table}`, {
+                method: 'POST',
+                headers: {
+                    'apikey': window.__ENV__.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.__ENV__.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'resolution=merge-duplicates,return=representation'
+                },
+                body: JSON.stringify(data)
+            });
+            return res.ok ? await res.json() : null;
+        },
+
+        async sbUpdate(table, data, filters = {}) {
+            let url = `${window.__ENV__.SUPABASE_URL}/rest/v1/${table}?`;
+            Object.entries(filters).forEach(([col, val], i) => {
+                if (i > 0) url += '&';
+                if (typeof val === 'string') url += `${col}=eq.${encodeURIComponent(val)}`;
+                else if (typeof val === 'number') url += `${col}=eq.${val}`;
+            });
+            const res = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    'apikey': window.__ENV__.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.__ENV__.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(data)
+            });
+            return res.ok ? await res.json() : null;
+        },
+
+        async sbDelete(table, filters = {}) {
+            let url = `${window.__ENV__.SUPABASE_URL}/rest/v1/${table}?`;
+            Object.entries(filters).forEach(([col, val], i) => {
+                if (i > 0) url += '&';
+                if (typeof val === 'string') url += `${col}=eq.${encodeURIComponent(val)}`;
+                else if (typeof val === 'number') url += `${col}=eq.${val}`;
+            });
+            const res = await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'apikey': window.__ENV__.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.__ENV__.SUPABASE_ANON_KEY}`
+                }
+            });
+            return res.ok;
+        },
+
+        // ✅ Load student progress from Supabase
+        async loadProgress() {
+            if (!this.userId) {
+                console.warn('Student ID not available');
+                return null;
+            }
+            try {
+                const data = await this.sbSelect('student_progress', '*', { student_id: this.userId });
+                return data.length > 0 ? data[0] : null;
+            } catch (err) {
+                console.error('Error loading progress:', err.message);
+                return null;
+            }
+        },
+
+        // ✅ Save/update quiz score to Supabase
+        async saveQuizScore(score, totalQuestions) {
+            if (!this.userId) {
+                console.warn('Student ID not available for quiz save');
+                return;
+            }
+            try {
+                const data = {
+                    student_id: this.userId,
+                    quiz_score: score,
+                    quiz_total: totalQuestions,
+                    last_quiz_attempt: new Date().toISOString()
+                };
+                await this.sbUpsert('student_progress', data);
+                console.log('Quiz score saved:', score, '/', totalQuestions);
+            } catch (err) {
+                console.error('Error saving quiz score:', err.message);
+            }
+        },
+
+        // ✅ Mark a module as completed
+        async markModuleCompleted(moduleName) {
+            if (!this.userId) {
+                console.warn('Student ID not available for module completion');
+                return;
+            }
+            try {
+                const data = {
+                    student_id: this.userId,
+                    completed_modules: JSON.stringify([...(JSON.parse(await this.getCompletedModules()) || []), moduleName]),
+                    last_activity: new Date().toISOString()
+                };
+                await this.sbUpsert('student_progress', data);
+                console.log('Module marked complete:', moduleName);
+            } catch (err) {
+                console.error('Error marking module complete:', err.message);
+            }
+        },
+
+        // ✅ Get completed modules
+        async getCompletedModules() {
+            const progress = await this.loadProgress();
+            if (!progress || !progress.completed_modules) return [];
+            try {
+                return JSON.parse(progress.completed_modules) || [];
+            } catch {
+                return [];
+            }
+        },
+
+        // ✅ Initialize progress on page load
+        async init() {
+            if (!this.userId) {
+                console.warn('Student progress tracking disabled: User not authenticated');
+                return;
+            }
+            try {
+                const progress = await this.loadProgress();
+                console.log('Student progress loaded:', progress);
+                // Optionally display progress stats in dashboard
+                if (progress?.quiz_score) {
+                    console.log(`Last quiz: ${progress.quiz_score}/${progress.quiz_total}`);
+                }
+            } catch (err) {
+                console.error('Error initializing progress:', err.message);
+            }
+        }
+    };
+
+    // ✅ Hook quiz submission to save score
+    const originalSubmitQuiz = window.submitQuiz;
+    window.submitQuiz = function() {
+        originalSubmitQuiz.call(this);
+        // Save quiz score to Supabase
+        Progress.saveQuizScore(quizScore, quizQuestions.length);
+    };
+
+    // Initialize progress tracking on page load
+    Progress.init();
+
     // Expose quiz functions globally for Blade inline onclick attributes
     window.startQuiz  = startQuiz;
     window.quizNext   = quizNext;
@@ -453,4 +636,4 @@ window.handleDownload = async function(filePathOrUrl, isDirectUrl = false) {
     } catch (err) {
         if (typeof toast === 'function') toast('error', 'Error: ' + err.message);
     }
-};
+};  

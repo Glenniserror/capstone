@@ -1,3 +1,4 @@
-@import './login/student_login.css';
-@import './login/teacher_login.css';
-@import './login/admin_login.css';
+/* Login CSS files are defined inline in their respective Blade views */
+/* @import './login/student_login.css'; */
+/* @import './login/teacher_login.css'; */
+/* @import './login/admin_login.css'; */

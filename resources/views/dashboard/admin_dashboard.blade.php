@@ -442,11 +442,26 @@
                 <div class="settings-section">
                     <h3>Notifications</h3>
                     <div class="desc">Choose what notifications the system sends</div>
-                    <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">New User Registrations</div><div class="toggle-sub">Notify admin when a new user joins</div></div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
-                    <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">Content Published</div><div class="toggle-sub">Alert when teacher publishes a module</div></div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
-                    <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">System Errors</div><div class="toggle-sub">Immediate alert on critical errors</div></div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
-                    <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">Weekly Report</div><div class="toggle-sub">Receive a weekly usage digest</div></div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
-                    <div class="save-row"><button class="btn-cancel">Cancel</button><button class="btn-save" onclick="saveSettings('Notification')">Save Preferences</button></div>
+                    <div class="toggle-row">
+                        <div class="toggle-info"><div class="toggle-title">New User Registrations</div><div class="toggle-sub">Notify admin when a new user joins</div></div>
+                        <label class="toggle"><input type="checkbox" id="notif-registration"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info"><div class="toggle-title">Content Published</div><div class="toggle-sub">Alert when teacher publishes a module</div></div>
+                        <label class="toggle"><input type="checkbox" id="notif-content"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info"><div class="toggle-title">System Errors</div><div class="toggle-sub">Immediate alert on critical errors</div></div>
+                        <label class="toggle"><input type="checkbox" id="notif-errors"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info"><div class="toggle-title">Weekly Report</div><div class="toggle-sub">Receive a weekly usage digest</div></div>
+                        <label class="toggle"><input type="checkbox" id="notif-weekly"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="save-row">
+                        <button class="btn-cancel">Cancel</button>
+                        <button class="btn-save" onclick="saveSettings('Notification')">Save Preferences</button>
+                    </div>
                 </div>
                 <div class="settings-section">
                     <h3>Roles &amp; Permissions</h3>
@@ -469,11 +484,26 @@
                 <div class="settings-section">
                     <h3>Feature Flags</h3>
                     <div class="desc">Enable or disable platform features</div>
-                    <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">AI Tutor Mode</div><div class="toggle-sub">Enable AI-powered tutoring assistance</div></div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
-                    <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">Student Leaderboard</div><div class="toggle-sub">Show ranking among students</div></div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
-                    <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">Maintenance Mode</div><div class="toggle-sub">Temporarily disable access for non-admins</div></div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
-                    <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">Registration Open</div><div class="toggle-sub">Allow new users to register</div></div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
-                    <div class="save-row"><button class="btn-cancel">Cancel</button><button class="btn-save" onclick="saveSettings('Feature Flags')">Save Features</button></div>
+                    <div class="toggle-row">
+                        <div class="toggle-info"><div class="toggle-title">AI Tutor Mode</div><div class="toggle-sub">Enable AI-powered tutoring assistance</div></div>
+                        <label class="toggle"><input type="checkbox" id="feat-ai-tutor"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info"><div class="toggle-title">Student Leaderboard</div><div class="toggle-sub">Show ranking among students</div></div>
+                        <label class="toggle"><input type="checkbox" id="feat-leaderboard"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info"><div class="toggle-title">Maintenance Mode</div><div class="toggle-sub">Temporarily disable access for non-admins</div></div>
+                        <label class="toggle"><input type="checkbox" id="feat-maintenance"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-info"><div class="toggle-title">Registration Open</div><div class="toggle-sub">Allow new users to register</div></div>
+                        <label class="toggle"><input type="checkbox" id="feat-registration"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="save-row">
+                        <button class="btn-cancel">Cancel</button>
+                        <button class="btn-save" onclick="saveSettings('Feature Flags')">Save Features</button>
+                    </div>
                 </div>
                 <div class="settings-section" style="border-color:#fca5a5">
                     <h3 style="color:var(--red)">Danger Zone</h3>

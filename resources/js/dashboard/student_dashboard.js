@@ -581,6 +581,29 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (err) {
                 console.error('Error initializing progress:', err.message);
             }
+        },
+
+        // ✅ Track module completion with score threshold
+        async trackModuleCompletion(moduleName, score, passThreshold = 70) {
+            if (!this.userId) {
+                console.warn('Student ID not available for module tracking');
+                return false;
+            }
+            try {
+                // Only mark as complete if score meets threshold
+                if (score >= passThreshold) {
+                    const completed = await this.getCompletedModules();
+                    if (!completed.includes(moduleName)) {
+                        await this.markModuleCompleted(moduleName);
+                        console.log(`✅ Module completed: ${moduleName}`);
+                        return true;
+                    }
+                }
+                return false;
+            } catch (err) {
+                console.error('Error tracking module completion:', err.message);
+                return false;
+            }
         }
     };
 
@@ -595,8 +618,129 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize progress tracking on page load
     Progress.init();
 
+    /* ================================
+       SUMMATIVE TEST LOCKING LOGIC
+       ================================ */
+
+    // ✅ Check if student has completed all module topics
+    const TOTAL_TOPICS = 16; // Total topics across all 3 modules
+    const EXPECTED_COMPLETED_MODULES = [
+        'Module 1: Sequences and Series',
+        'Module 2: Polynomials',
+        'Module 3: Advanced Equations'
+    ];
+
+    async function isSummativeUnlocked() {
+        const progress = await Progress.loadProgress();
+        if (!progress) return false;
+
+        // Parse completed modules from JSON
+        let completedModules = [];
+        try {
+            if (progress.completed_modules) {
+                completedModules = JSON.parse(progress.completed_modules);
+            }
+        } catch (e) {
+            console.warn('Could not parse completed_modules:', e);
+            return false;
+        }
+
+        // Check if all expected modules are completed
+        const allCompleted = EXPECTED_COMPLETED_MODULES.every(module =>
+            completedModules.includes(module)
+        );
+
+        return allCompleted;
+    }
+
+    async function getCompletionProgress() {
+        const progress = await Progress.loadProgress();
+        let completedModules = [];
+        
+        try {
+            if (progress?.completed_modules) {
+                completedModules = JSON.parse(progress.completed_modules);
+            }
+        } catch (e) {
+            console.warn('Could not parse completed_modules:', e);
+        }
+
+        const completedCount = completedModules.filter(m =>
+            EXPECTED_COMPLETED_MODULES.includes(m)
+        ).length;
+
+        return {
+            completed: completedCount,
+            total: EXPECTED_COMPLETED_MODULES.length,
+            percentage: Math.round((completedCount / EXPECTED_COMPLETED_MODULES.length) * 100),
+            remaining: EXPECTED_COMPLETED_MODULES.filter(m =>
+                !completedModules.includes(m)
+            )
+        };
+    }
+
+    async function updateSummativeLockStatus() {
+        const unlocked = await isSummativeUnlocked();
+        const lockNotice = document.getElementById('summative-lock-notice');
+        const startButton = document.getElementById('start-summative-btn');
+        const quizStartScreen = document.getElementById('quiz-start-screen');
+
+        if (!unlocked) {
+            // Show lock notice
+            const progress = await getCompletionProgress();
+            const remainingList = progress.remaining.map(m =>
+                `<li style="padding: 4px 0; font-size: 13px; color: #92400e;">• ${m}</li>`
+            ).join('');
+
+            const lockDisplay = `
+                <div style="margin-bottom: 12px;">
+                    <div style="font-size: 13px; font-weight: 600; color: #b45309; margin-bottom: 8px;">Progress: ${progress.completed}/${progress.total} modules</div>
+                    <div style="height: 8px; background: #fde68a; border-radius: 99px; overflow: hidden; margin-bottom: 8px;">
+                        <div style="height: 100%; width: ${progress.percentage}%; background: #f59e0b; transition: width 0.4s ease;"></div>
+                    </div>
+                    <div style="font-size: 12px; color: #92400e; margin-bottom: 12px;">${progress.percentage}% Complete</div>
+                </div>
+                <div style="text-align: left; padding: 10px 0; border-top: 1px solid #fcd34d;">
+                    <div style="font-size: 12px; font-weight: 600; color: #b45309; margin-bottom: 6px;">Remaining:</div>
+                    <ul style="list-style: none; margin: 0; padding: 0;">
+                        ${remainingList}
+                    </ul>
+                </div>
+            `;
+
+            document.getElementById('lock-progress-display').innerHTML = lockDisplay;
+            lockNotice.style.display = 'block';
+            startButton.style.display = 'none';
+            if (quizStartScreen) quizStartScreen.style.display = 'none';
+        } else {
+            // Hide lock notice
+            lockNotice.style.display = 'none';
+            startButton.style.display = 'block';
+            if (quizStartScreen) quizStartScreen.style.display = 'block';
+        }
+    }
+
+    // ✅ Check summative status when navigating to it
+    const _originalNavigate = window.navigate;
+    window.navigate = async function(page) {
+        if (page === 'summative') {
+            await updateSummativeLockStatus();
+        }
+        _originalNavigate(page);
+    };
+
+    // ✅ Wrap startQuiz() to prevent direct access when locked
+    const _originalStartQuiz = startQuiz;
+    window.startQuiz = async function() {
+        const unlocked = await isSummativeUnlocked();
+        if (!unlocked) {
+            window.toast('warning', '🔒 Complete all module topics first to unlock this test!');
+            return;
+        }
+        _originalStartQuiz();
+    };
+
     // Expose quiz functions globally for Blade inline onclick attributes
-    window.startQuiz  = startQuiz;
     window.quizNext   = quizNext;
     window.quizPrev   = quizPrev;
     window.retakeQuiz = retakeQuiz;

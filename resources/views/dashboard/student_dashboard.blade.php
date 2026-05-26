@@ -573,10 +573,20 @@
 
                 
             <!-- ===== SUMMATIVE TEST PAGE ===== -->
-            <div class="page" id="page-summative">
+            <div class="page" id="page-summative" style="width: 100% !important; display: block !important;">
                 <div class="hero-section">
                     <h1 class="welcome-title">Summative Test 📋</h1>
                     <p class="welcome-subtitle">Answer all questions carefully. You can review before submitting.</p>
+                </div>
+
+                <!-- LOCK STATUS INDICATOR -->
+                <div id="summative-lock-notice" style="display:none; margin-bottom:20px;">
+                    <section class="modules-container" style="background: #fef3c7; border: 1px solid #fcd34d; text-align: center; padding: 20px; opacity: 1; animation: none;">
+                        <div style="font-size: 32px; margin-bottom: 8px;">🔒</div>
+                        <div class="section-label" style="color: #b45309; margin-bottom: 4px;">Test Not Yet Available</div>
+                        <div style="font-size: 13px; color: #92400e; margin-bottom: 16px;">Complete all 3 modules first to unlock this comprehensive test.</div>
+                        <div id="lock-progress-display" style="text-align: left; margin-top: 12px;"></div>
+                    </section>
                 </div>
 
                 <div id="quiz-start-screen">
@@ -596,7 +606,7 @@
                             <div class="download-info"><span class="download-name">Review your answers before submitting</span><span class="download-meta">You can go back and change answers anytime</span></div>
                         </div>
                     </section>
-                    <button class="primary-btn" style="max-width:320px; margin:0 auto; display:block; padding:14px; font-size:15px;" onclick="startQuiz()">Begin Summative Test →</button>
+                    <button class="primary-btn" id="start-summative-btn" style="max-width:320px; margin:0 auto; display:block; padding:14px; font-size:15px;" onclick="startQuiz()">Begin Summative Test →</button>
                 </div>
 
                 <div id="quiz-question-screen" style="display:none;">
@@ -622,7 +632,7 @@
                         <div id="quiz-result-emoji" style="font-size:56px; margin-bottom:12px;">🎉</div>
                         <div class="section-label" id="quiz-result-title">Test Complete!</div>
                         <div class="section-sub" id="quiz-result-sub">Here's how you did</div>
-                        <div style="font-size:52px; font-weight:800; color:var(--blue); letter-spacing:-2px; margin:16px 0;" id="quiz-result-score"></div>
+                        <div style="font-size:52px; font-weight:800; color:var(--blue); letter-spacing:-2px; margin:16px 0;" id="quiz-result-score">8/10</div>
                         <div style="font-size:14px; color:var(--text-3); margin-bottom:24px;" id="quiz-result-msg"></div>
                         <button class="primary-btn" style="max-width:240px; margin:0 auto;" onclick="retakeQuiz()">Retake Test</button>
                     </section>

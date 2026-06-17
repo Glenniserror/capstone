@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -33,6 +34,11 @@ class User extends Authenticatable
     public function section(): BelongsTo
     {
         return $this->belongsTo(Section::class);
+    }
+
+    public function progress(): HasMany
+    {
+        return $this->hasMany(StudentProgress::class);
     }
 
     // Helper methods to check role

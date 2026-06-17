@@ -2,6 +2,9 @@
    resources/js/dashboard/student_dashboard.js
    ================================ */
 
+// Track which module's summative test we're currently viewing
+let currentModuleForSummative = null;
+
 document.addEventListener('DOMContentLoaded', function () {
 
     /* ================================
@@ -631,10 +634,35 @@ document.addEventListener('DOMContentLoaded', function () {
     ];
 
     async function isSummativeUnlocked() {
+        // If a specific module is being tested, check only that module completion
+        if (currentModuleForSummative) {
+            const progress = await Progress.loadProgress();
+            if (!progress) return false;
+
+            let completedModules = [];
+            try {
+                if (progress.completed_modules) {
+                    completedModules = JSON.parse(progress.completed_modules);
+                }
+            } catch (e) {
+                console.warn('Could not parse completed_modules:', e);
+                return false;
+            }
+
+            // Check if the current module is completed
+            const moduleNames = {
+                1: 'Module 1: Sequences and Series',
+                2: 'Module 2: Polynomials',
+                3: 'Module 3: Advanced Equations'
+            };
+
+            return completedModules.includes(moduleNames[currentModuleForSummative]);
+        }
+
+        // Legacy: if no specific module, check all completed (for backwards compatibility)
         const progress = await Progress.loadProgress();
         if (!progress) return false;
 
-        // Parse completed modules from JSON
         let completedModules = [];
         try {
             if (progress.completed_modules) {
@@ -682,43 +710,73 @@ document.addEventListener('DOMContentLoaded', function () {
     async function updateSummativeLockStatus() {
         const unlocked = await isSummativeUnlocked();
         const lockNotice = document.getElementById('summative-lock-notice');
+        const initialCta = document.getElementById('initial-cta');
         const startButton = document.getElementById('start-summative-btn');
         const quizStartScreen = document.getElementById('quiz-start-screen');
 
         if (!unlocked) {
             // Show lock notice
-            const progress = await getCompletionProgress();
-            const remainingList = progress.remaining.map(m =>
-                `<li style="padding: 4px 0; font-size: 13px; color: #92400e;">• ${m}</li>`
-            ).join('');
+            let lockMessage = 'Complete this module first to unlock the summative test.';
+            
+            if (currentModuleForSummative) {
+                const moduleNames = {
+                    1: 'Module 1',
+                    2: 'Module 2',
+                    3: 'Module 3'
+                };
+                lockMessage = `Complete ${moduleNames[currentModuleForSummative]} first to unlock its summative test.`;
+            }
 
             const lockDisplay = `
                 <div style="margin-bottom: 12px;">
-                    <div style="font-size: 13px; font-weight: 600; color: #b45309; margin-bottom: 8px;">Progress: ${progress.completed}/${progress.total} modules</div>
-                    <div style="height: 8px; background: #fde68a; border-radius: 99px; overflow: hidden; margin-bottom: 8px;">
-                        <div style="height: 100%; width: ${progress.percentage}%; background: #f59e0b; transition: width 0.4s ease;"></div>
-                    </div>
-                    <div style="font-size: 12px; color: #92400e; margin-bottom: 12px;">${progress.percentage}% Complete</div>
-                </div>
-                <div style="text-align: left; padding: 10px 0; border-top: 1px solid #fcd34d;">
-                    <div style="font-size: 12px; font-weight: 600; color: #b45309; margin-bottom: 6px;">Remaining:</div>
-                    <ul style="list-style: none; margin: 0; padding: 0;">
-                        ${remainingList}
-                    </ul>
+                    <div style="font-size: 13px; color: #92400e;">${lockMessage}</div>
                 </div>
             `;
 
             document.getElementById('lock-progress-display').innerHTML = lockDisplay;
             lockNotice.style.display = 'block';
+            initialCta.style.display = 'none';
             startButton.style.display = 'none';
             if (quizStartScreen) quizStartScreen.style.display = 'none';
         } else {
             // Hide lock notice
             lockNotice.style.display = 'none';
+            initialCta.style.display = 'block';
             startButton.style.display = 'block';
             if (quizStartScreen) quizStartScreen.style.display = 'block';
         }
     }
+
+    // ✅ Function to start a module-specific summative test
+    window.startModuleSummativeTest = async function(moduleNumber) {
+        currentModuleForSummative = moduleNumber;
+        const unlocked = await isSummativeUnlocked();
+        
+        if (!unlocked) {
+            const moduleNames = {
+                1: 'Module 1: Sequences and Series',
+                2: 'Module 2: Polynomials',
+                3: 'Module 3: Advanced Equations'
+            };
+            window.toast('warning', `🔒 Complete ${moduleNames[moduleNumber]} first to unlock its test!`);
+            return;
+        }
+
+        // Navigate to summative page and show instructions
+        navigate('summative');
+        setTimeout(() => {
+            window.showTestInstructions();
+        }, 100);
+    };
+
+    // ✅ Function to show test instructions
+    window.showTestInstructions = function() {
+        const initialCta = document.getElementById('initial-cta');
+        const quizStartScreen = document.getElementById('quiz-start-screen');
+        
+        if (initialCta) initialCta.style.display = 'none';
+        if (quizStartScreen) quizStartScreen.style.display = 'block';
+    };
 
     // ✅ Check summative status when navigating to it
     const _originalNavigate = window.navigate;
@@ -734,7 +792,10 @@ document.addEventListener('DOMContentLoaded', function () {
     window.startQuiz = async function() {
         const unlocked = await isSummativeUnlocked();
         if (!unlocked) {
-            window.toast('warning', '🔒 Complete all module topics first to unlock this test!');
+            const moduleMessage = currentModuleForSummative 
+                ? `🔒 Complete Module ${currentModuleForSummative} first!`
+                : '🔒 Complete all module topics first to unlock this test!';
+            window.toast('warning', moduleMessage);
             return;
         }
         _originalStartQuiz();

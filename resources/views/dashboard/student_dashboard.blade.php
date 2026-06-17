@@ -260,7 +260,7 @@
                         <div class="action-content">
                             <h3>Summative Test</h3>
                             <p>Test your knowledge with an interactive summative assessment</p>
-                            <button class="primary-btn" onclick="navigate('summative')">Start Summative Test</button>
+                            <button class="primary-btn" onclick="navigate('summative'); setTimeout(() => { document.getElementById('initial-cta').style.display='none'; document.getElementById('quiz-start-screen').style.display='block'; }, 200);">Start Summative Test</button>
                         </div>
                     </div>
                 </div>
@@ -570,13 +570,19 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         </button>
                     </div>
+                </section>
+            </div>
 
-                
             <!-- ===== SUMMATIVE TEST PAGE ===== -->
-            <div class="page" id="page-summative" style="width: 100% !important; display: block !important;">
+            <div class="page" id="page-summative">
                 <div class="hero-section">
                     <h1 class="welcome-title">Summative Test 📋</h1>
                     <p class="welcome-subtitle">Answer all questions carefully. You can review before submitting.</p>
+                </div>
+
+                <!-- START TEST BUTTON (Initial CTA) -->
+                <div id="initial-cta" style="text-align:center; margin-bottom:20px;">
+                    <button class="primary-btn" style="max-width:320px; margin:0 auto; padding:14px; font-size:15px;" onclick="document.getElementById('initial-cta').style.display='none'; document.getElementById('quiz-start-screen').style.display='block';">Start Summative Test →</button>
                 </div>
 
                 <!-- LOCK STATUS INDICATOR -->
@@ -589,7 +595,7 @@
                     </section>
                 </div>
 
-                <div id="quiz-start-screen">
+                <div id="quiz-start-screen" style="display:none;">
                     <section class="modules-container">
                         <div class="section-label">Test Instructions</div>
                         <div class="section-sub">Read before you begin</div>

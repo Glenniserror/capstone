@@ -1,0 +1,134 @@
+<?php
+
+use App\Http\Controllers\Admin\TeacherApprovalController;
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\Auth\AuthController;
+// Controllers
+use App\Http\Controllers\ChatbotController;
+use App\Http\Controllers\QuizController;
+use App\Http\Controllers\SectionController;
+use App\Http\Controllers\StudentDashboardController;
+use App\Http\Controllers\Teacher\SectionController as TeacherSectionController;
+use App\Http\Controllers\Teacher\StudentApprovalController;
+use App\Http\Controllers\TeacherDashboardController;
+use App\Http\Controllers\SupabaseController;
+use Illuminate\Support\Facades\Route;
+
+// Gawin itong ganito sa web.php
+Route::post('/chatbot/ask', [ChatbotController::class, 'ask'])->name('chatbot.ask');
+/* ----------- Homepage ----------- */
+Route::get('/', function () {
+    return view('dashboard.homepage');
+})->name('homepage');
+
+/* ----------- Auth Portal ----------- */
+Route::get('/signin', function () {
+    return view('login.signin');
+})->name('signin-signin');
+
+Route::get('/signup', function () {
+    return view('login.signup');
+})->name('signin-signup');
+
+// ============ STUDENT ROUTES ============
+Route::prefix('student')->group(function () {
+    // Login
+    Route::get('/login', [AuthController::class, 'showStudentLoginForm'])->name('student.login');
+    Route::post('/login', [AuthController::class, 'studentLogin'])->name('student.login.submit');
+
+    // Register
+    Route::get('/register', [AuthController::class, 'showStudentRegisterForm'])->name('student.register.form');
+    Route::post('/register', [AuthController::class, 'studentRegister'])->name('student.register');
+
+    // Google signup completion
+    Route::get('/complete-signup', [AuthController::class, 'showGoogleSignupCompletion'])->name('student.complete-google-signup');
+    Route::post('/complete-signup', [AuthController::class, 'completeGoogleSignup'])->name('student.complete-google-signup.submit');
+
+    // Dashboard (Protected with student middleware - checks role and approval status)
+    Route::middleware(['auth', 'student'])->group(function () {
+        Route::get('/dashboard', [StudentDashboardController::class, 'index'])->name('student.dashboard');
+        Route::get('/modules', function () {
+            return view('dashboard.module');
+        })->name('student.modules');
+        Route::post('/logout', [AuthController::class, 'logout'])->name('student.logout');
+
+    });
+});
+
+// ============ TEACHER ROUTES ============
+Route::prefix('teacher')->group(function () {
+    // Login
+    Route::get('/login', [AuthController::class, 'showTeacherLoginForm'])->name('teacher.login');
+    Route::post('/login', [AuthController::class, 'teacherLogin'])->name('teacher.login.submit');
+
+    // Register
+    Route::get('/register', [AuthController::class, 'showTeacherRegisterForm'])->name('teacher.register.form');
+    Route::post('/register', [AuthController::class, 'teacherRegister'])->name('teacher.register');
+
+    // Dashboard (Protected with role middleware)
+    Route::middleware(['auth', 'role:teacher'])->group(function () {
+        Route::get('/dashboard', [TeacherDashboardController::class, 'index'])->name('teacher.dashboard');
+        Route::post('/logout', [AuthController::class, 'logout'])->name('teacher.logout');
+        Route::post('/teacher/generate-quiz', [QuizController::class, 'generate'])->name('quiz.generate');
+
+        // Student Approvals
+        Route::prefix('students')->group(function () {
+            Route::get('/approvals', [StudentApprovalController::class, 'index'])->name('teacher.student-approvals');
+            Route::post('/approve/{user}', [StudentApprovalController::class, 'approve'])->name('teacher.student.approve');
+            Route::post('/reject/{user}', [StudentApprovalController::class, 'reject'])->name('teacher.student.reject');
+            Route::post('/reset/{user}', [StudentApprovalController::class, 'reset'])->name('teacher.student.reset');
+        });
+
+        // Sections Management
+        Route::prefix('sections')->group(function () {
+            Route::post('/', [TeacherSectionController::class, 'store'])->name('teacher.section.store');
+            Route::put('/{section}', [TeacherSectionController::class, 'update'])->name('teacher.section.update');
+            Route::delete('/{section}', [TeacherSectionController::class, 'destroy'])->name('teacher.section.destroy');
+            Route::get('/list', [TeacherSectionController::class, 'list'])->name('teacher.section.list');
+        });
+    });
+});
+
+// ============ API ROUTES ============
+Route::get('/api/sections', [SectionController::class, 'index'])->name('api.sections');
+Route::post('/api/sections', [SectionController::class, 'store'])->middleware('auth')->name('api.sections.store');
+Route::delete('/api/sections/{section}', [SectionController::class, 'destroy'])->middleware('auth')->name('api.sections.destroy');
+Route::get('/api/test', function () {
+    return response()->json(['message' => 'API routing works']);
+})->name('api.test');
+
+// Supabase connection test route
+Route::get('/supabase-test', [SupabaseController::class, 'test'])->name('supabase.test');
+
+// Get Groq API key (protected by auth middleware)
+Route::get('/api/get-groq-key', [QuizController::class, 'getGroqKey'])->name('api.get-groq-key')->middleware('auth');
+
+// ============ ADMIN ROUTES ============
+Route::prefix('admin')->group(function () {
+    // Login
+    Route::get('/login', [AuthController::class, 'showAdminLoginForm'])->name('admin.login');
+    Route::post('/login', [AuthController::class, 'adminLogin'])->name('admin.login.submit');
+
+    // Register
+    Route::get('/register', [AuthController::class, 'showAdminRegisterForm'])->name('admin.register.form');
+    Route::post('/register', [AuthController::class, 'adminRegister'])->name('admin.register');
+
+    // Dashboard (Protected with role middleware)
+    Route::middleware(['auth', 'role:admin'])->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+        Route::post('/logout', [AuthController::class, 'logout'])->name('admin.logout');
+
+        // Teacher Approvals
+        Route::prefix('teachers')->group(function () {
+            Route::get('/approvals', [TeacherApprovalController::class, 'index'])->name('admin.teacher-approvals');
+            Route::post('/approve/{user}', [TeacherApprovalController::class, 'approve'])->name('admin.teacher.approve');
+            Route::post('/reject/{user}', [TeacherApprovalController::class, 'reject'])->name('admin.teacher.reject');
+            Route::post('/reset/{user}', [TeacherApprovalController::class, 'reset'])->name('admin.teacher.reset');
+        });
+    });
+});
+
+// ============ GOOGLE OAUTH ROUTES ============
+Route::get('/auth/google/{role}', [AuthController::class, 'redirectToGoogle'])->name('auth.google.redirect')
+    ->where('role', 'student|teacher|admin');
+Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');

@@ -1,0 +1,470 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Models\Section;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Session;
+
+class AuthController extends Controller
+{
+    // ============ STUDENT ============
+    public function showStudentLoginForm()
+    {
+        return view('login.signin', ['portalType' => 'student']);
+    }
+
+    public function showStudentRegisterForm()
+    {
+        $sections = Section::all();
+
+        return view('login.signup', ['sections' => $sections, 'portalType' => 'student']);
+    }
+
+    public function studentLogin(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        $userExists = User::where('email', $request->email)->exists();
+        if (! $userExists) {
+            return back()->withErrors(['email' => 'No account found with this email. Please register first.'])->onlyInput('email');
+        }
+
+        if (Auth::attempt($request->only('email', 'password'))) {
+            $user = Auth::user();
+
+            if ($user->role !== 'student') {
+                Auth::logout();
+
+                return back()->withErrors([
+                    'email' => "This account is registered as a {$user->role}. Please use the {$user->role} login portal.",
+                ]);
+            }
+
+            if ($user->approval_status !== 'approved') {
+                Auth::logout();
+
+                return redirect()->route('student.login')->withErrors([
+                    'email' => 'Your account is awaiting teacher approval. Please check back later.',
+                ]);
+            }
+
+            $request->session()->regenerate();
+
+            return redirect()->route('student.dashboard');
+        }
+
+        return back()->withErrors(['email' => 'Invalid email or password.'])->onlyInput('email');
+    }
+
+    public function studentRegister(Request $request)
+    {
+        $validated = $request->validate([
+            'firstName' => 'required|string|max:255',
+            'lastName' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'section_id' => 'required|exists:sections,id',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $fullName = $validated['firstName'].' '.$validated['lastName'];
+
+        User::create([
+            'name' => $fullName,
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role' => 'student',
+            'section_id' => $validated['section_id'],
+            'approval_status' => 'pending',
+        ]);
+
+        // Do NOT auto-login
+        return redirect()->route('student.login')
+            ->with('success', 'Account created successfully! Please wait for your teacher to approve your account before logging in.');
+    }
+
+    /**
+     * Show form for completing Google signup (section selection).
+     */
+    public function showGoogleSignupCompletion()
+    {
+        $userId = session('google_user_id');
+        if (! $userId) {
+            return redirect()->route('student.login')->withErrors(['error' => 'Invalid session.']);
+        }
+
+        $user = User::find($userId);
+        if (! $user || $user->section_id !== null) {
+            return redirect()->route('student.login');
+        }
+
+        $sections = Section::all();
+
+        return view('login.google-signup-completion', ['sections' => $sections, 'user' => $user]);
+    }
+
+    /**
+     * Complete Google signup by setting section.
+     */
+    public function completeGoogleSignup(Request $request)
+    {
+        $userId = session('google_user_id');
+        if (! $userId) {
+            return redirect()->route('student.login')->withErrors(['error' => 'Invalid session.']);
+        }
+
+        $validated = $request->validate([
+            'section_id' => 'required|exists:sections,id',
+        ]);
+
+        $user = User::find($userId);
+        if (! $user) {
+            return redirect()->route('student.login')->withErrors(['error' => 'User not found.']);
+        }
+
+        // Update user with section
+        $user->update([
+            'section_id' => $validated['section_id'],
+            'approval_status' => 'pending', // Mark for teacher approval
+        ]);
+
+        // Clear session
+        Session::forget('google_user_id');
+
+        return redirect()->route('student.login')
+            ->with('success', 'Account completed! Please wait for your teacher to approve your account before logging in.');
+    }
+
+    // ============ TEACHER ============
+    public function showTeacherLoginForm()
+    {
+        return view('login.signin', ['portalType' => 'teacher']);
+    }
+
+    public function teacherLogin(Request $request): \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        $userExists = User::where('email', $request->email)->exists();
+        if (! $userExists) {
+            return back()->withErrors(['email' => 'No account found with this email. Please register first.'])->onlyInput('email');
+        }
+
+        if (Auth::attempt($request->only('email', 'password'))) {
+            /** @var User $user */
+            $user = Auth::user();
+
+            if ($user->role !== 'teacher') {
+                Auth::logout();
+
+                return back()->withErrors([
+                    'email' => "This account is registered as a {$user->role}. Please use the {$user->role} login portal.",
+                ]);
+            }
+
+            if ($user->approval_status !== 'approved') {
+                Auth::logout();
+
+                return redirect()->route('teacher.login')->withErrors([
+                    'email' => 'Your account is awaiting approval from an administrator. Please contact support.',
+                ]);
+            }
+
+            $request->session()->regenerate();
+
+            return redirect()->route('teacher.dashboard');
+        }
+
+        return back()->withErrors(['email' => 'Invalid email or password.'])->onlyInput('email');
+    }
+
+    public function teacherRegister(Request $request)
+    {
+        $validated = $request->validate([
+            'firstName' => 'required|string|max:255',
+            'lastName' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $fullName = $validated['firstName'].' '.$validated['lastName'];
+
+        User::create([
+            'name' => $fullName,
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role' => 'teacher',
+            'approval_status' => 'pending',
+        ]);
+
+        return redirect()->route('teacher.login')
+            ->with('success', 'Account created successfully! Please wait for admin approval before logging in.');
+    }
+
+    // ============ ADMIN ============
+    public function showAdminLoginForm()
+    {
+        return view('login.signin', ['portalType' => 'admin']);
+    }
+
+    public function adminLogin(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        $userExists = User::where('email', $request->email)->exists();
+        if (! $userExists) {
+            return back()->withErrors(['email' => 'No account found with this email. Please register first.'])->onlyInput('email');
+        }
+
+        if (Auth::attempt($request->only('email', 'password'))) {
+            $user = Auth::user();
+
+            if ($user->role !== 'admin') {
+                Auth::logout();
+
+                return back()->withErrors([
+                    'email' => "This account is registered as a {$user->role}. Please use the {$user->role} login portal.",
+                ]);
+            }
+
+            $request->session()->regenerate();
+
+            return redirect()->route('admin.dashboard');
+        }
+
+        return back()->withErrors(['email' => 'Invalid email or password.'])->onlyInput('email');
+    }
+
+    public function adminRegister(Request $request)
+    {
+        // List of approved admin emails
+        $approvedEmails = [
+            'tardio@gmail.com',
+            'carman@gmail.com',
+            'villamor@gmail.com',
+            'tamayuza@gmail.com',
+            'embanecido@gmail.com',
+        ];
+
+        $validated = $request->validate([
+            'firstName' => 'required|string|max:255',
+            'lastName' => 'required|string|max:255',
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                'unique:users,email',
+                function ($attribute, $value, $fail) use ($approvedEmails) {
+                    if (! in_array($value, $approvedEmails)) {
+                        $fail('This email is not authorized to register as admin.');
+                    }
+                },
+            ],
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $fullName = $validated['firstName'].' '.$validated['lastName'];
+
+        User::create([
+            'name' => $fullName,
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role' => 'admin',
+        ]);
+
+        return redirect()->route('admin.login')
+            ->with('success', 'Account created successfully! Please log in.');
+    }
+
+    // ============ LOGOUT ============
+    public function logout(Request $request)
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('homepage');
+    }
+
+    // ============ GOOGLE OAUTH ============
+    public function redirectToGoogle(string $role)
+    {
+        // Validate role
+        if (! in_array($role, ['student', 'teacher', 'admin'])) {
+            return redirect()->route('homepage')->withErrors(['error' => 'Invalid role.']);
+        }
+
+        // Store the role in session for later use
+        session(['oauth_role' => $role]);
+
+        // Check if using mock mode for testing
+        if (config('services.google.mode') === 'mock') {
+            return $this->mockGoogleLogin();
+        }
+
+        $redirect = \Laravel\Socialite\Facades\Socialite::driver('google')->redirect();
+        $url = $redirect->getTargetUrl();
+        $separator = strpos($url, '?') ? '&' : '?';
+
+        return redirect($url.$separator.'prompt=select_account');
+    }
+
+    public function handleGoogleCallback()
+    {
+        try {
+            $googleUser = \Laravel\Socialite\Facades\Socialite::driver('google')->user();
+        } catch (\Exception $e) {
+            return redirect()->route('student.login')
+                ->withErrors(['error' => 'Failed to authenticate with Google.'])
+                ->with('notification_error', 'Failed to authenticate with Google.');
+        }
+
+        if (! $googleUser) {
+            return redirect()->route('student.login')
+                ->withErrors(['error' => 'Failed to retrieve Google user data.'])
+                ->with('notification_error', 'Failed to retrieve Google user data.');
+        }
+
+        // Get the stored role from session
+        $role = session('oauth_role') ?? 'student';
+
+        // Validate admin email authorization
+        if ($role === 'admin') {
+            $approvedEmails = [
+                'tardio@gmail.com',
+                'carman@gmail.com',
+                'villamor@gmail.com',
+                'tamayuza@gmail.com',
+                'embanecido@gmail.com',
+            ];
+
+            if (! in_array($googleUser->getEmail(), $approvedEmails)) {
+                return redirect()->route('admin.login')
+                    ->withErrors(['error' => 'This email is not authorized to register as admin.'])
+                    ->with('notification_error', 'This email is not authorized to register as admin.');
+            }
+        }
+
+        // Update or create user with Google ID
+        $isNewUser = ! User::where('google_id', $googleUser->getId())->exists();
+        $approvalStatus = $isNewUser && $role !== 'admin' ? 'pending' : 'approved';
+
+        $user = User::updateOrCreate(
+            ['google_id' => $googleUser->getId()],
+            [
+                'name' => $googleUser->getName() ?? 'Google User',
+                'email' => $googleUser->getEmail(),
+                'password' => Hash::make(uniqid()),
+                'role' => $role,
+                'approval_status' => $approvalStatus,
+            ]
+        );
+
+        if (! ($user instanceof User)) {
+            return redirect()->route('student.login')->withErrors(['error' => 'Failed to create or retrieve user account.']);
+        }
+
+        // Check if role matches (for existing users who logged in with different role)
+        if ($user->role !== $role) {
+            return redirect()->route($role.'.login')
+                ->withErrors(['email' => "This account is registered as a {$user->role}. Please use the {$user->role} login portal."]);
+        }
+
+        // Check if teacher is approved
+        if ($user->role === 'teacher' && $user->approval_status !== 'approved') {
+            Auth::logout();
+
+            return redirect()->route('teacher.login')
+                ->withErrors(['email' => 'Your account is awaiting admin approval. Please check back later.']);
+        }
+
+        // Check if student needs to complete section selection (Google sign-up)
+        if ($user->role === 'student' && $isNewUser && $user->section_id === null) {
+            // Store user ID in session and redirect to section selection
+            session(['google_user_id' => $user->id, 'oauth_role' => 'student']);
+
+            return redirect()->route('student.complete-google-signup');
+        }
+
+        // Check if student is approved
+        if ($user->role === 'student' && $user->approval_status !== 'approved') {
+            Auth::logout();
+
+            return redirect()->route('student.login')
+                ->withErrors(['email' => 'Your account is awaiting teacher approval. Please check back later.']);
+        }
+
+        // Log the user in
+        Auth::login($user);
+
+        // Clear session only after successful authentication
+        Session::forget('oauth_role');
+
+        // Redirect to appropriate dashboard
+        return redirect()->route($role.'.dashboard');
+    }
+
+    // Mock Google Login for Testing
+    private function mockGoogleLogin()
+    {
+        $testEmails = [
+            'student' => 'test.student@gmail.com',
+            'teacher' => 'test.teacher@gmail.com',
+            'admin' => 'tardio@gmail.com',
+        ];
+
+        $role = session('oauth_role') ?? 'student';
+        $email = $testEmails[$role] ?? 'test.user@gmail.com';
+
+        // Check if user exists
+        $user = User::where('email', $email)->first();
+
+        if ($user !== null) {
+            // User exists, check if role matches
+            if ($user->role !== $role) {
+                return redirect()->route($role.'.login')
+                    ->withErrors(['email' => "This account is registered as a {$user->role}. Please use the {$user->role} login portal."]);
+            }
+        } else {
+            // Create new test user - teachers start with pending status
+            $approvalStatus = $role === 'teacher' ? 'pending' : 'approved';
+            $user = User::create([
+                'name' => ucfirst($role).' Test User',
+                'email' => $email,
+                'password' => Hash::make('test12345'),
+                'role' => $role,
+                'approval_status' => $approvalStatus,
+            ]);
+        }
+        assert($user instanceof User, 'User must exist or be created');
+
+        // Check if teacher is approved
+        if ($user->role === 'teacher' && $user->approval_status !== 'approved') {
+            return redirect()->route('teacher.login')
+                ->withErrors(['email' => 'Your account is awaiting admin approval. Please check back later.']);
+        }
+
+        // Log the user in
+        Auth::login($user);
+
+        // Show success message
+        session(['google_auth_success' => true, 'google_auth_email' => $email]);
+
+        // Redirect to appropriate dashboard
+        return redirect()->route($role.'.dashboard');
+    }
+}
